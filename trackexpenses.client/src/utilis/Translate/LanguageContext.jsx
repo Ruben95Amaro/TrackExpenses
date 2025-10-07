@@ -9,6 +9,7 @@ const translations = {
     },
     common: {
       admin_dashboard: "Dashboard",
+      filters: "filters",
       group_dashboard: "Dashboard",
       listWallets: "List wallets",
       dashboard: "Dashboard",

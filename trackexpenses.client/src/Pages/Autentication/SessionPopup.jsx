@@ -47,7 +47,6 @@ export default function SessionPopup() {
       setAutoLoggingOut(false);
     };
 
-    // ⬇️ NOVO: se expirar sem popup, força logout global
     const onExpiredHard = async () => {
       setOpen(false);
       if (!autoLoggingOut) {
@@ -67,14 +66,12 @@ export default function SessionPopup() {
     };
   }, [autoLoggingOut, logout]);
 
-  // countdown a rodar só quando aberto
   useEffect(() => {
     if (!open) return;
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [open]);
 
-  // ⬇️ NOVO: auto-logout quando mostra 00:00 (popup aberto)
   useEffect(() => {
     if (open && left <= 0 && !autoLoggingOut) {
       (async () => {

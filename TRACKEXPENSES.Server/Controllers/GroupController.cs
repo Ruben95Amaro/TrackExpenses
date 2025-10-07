@@ -1,12 +1,10 @@
-﻿using Google.Protobuf.Collections;
+﻿using System.ComponentModel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel;
-using System.Data;
 using TRACKEXPENSES.Server.Data;
-using TRACKEXPENSES.Server.Extensions;
+using TRACKEXPENSES.Server.Extensions;     // GroupQueryExtensions
 using TRACKEXPENSES.Server.Models;
 using TRACKEXPENSES.Server.Requests.Group;
 using TRACKEXPENSES.Server.Requests.User;
@@ -15,7 +13,8 @@ using TRACKEXPENSES.Server.Services;
 namespace TRACKEXPENSES.Server.Controllers
 {
     [ApiController]
-    [Route("api/Group")]
+    [Authorize]
+    [Route("api/[controller]")]
     public class GroupController(
         ICodeGroupService codeService,
         FinancasDbContext context,
@@ -33,29 +32,26 @@ namespace TRACKEXPENSES.Server.Controllers
         /* ----------------------------- helpers ----------------------------- */
         private string? CurrentUserId() => _userManager.GetUserId(User);
 
-        private static object ProjectGroup(Group g, User? admin, IEnumerable<User> users)
+        private static object ProjectGroup(Group g, User? admin, IEnumerable<User> users) => new
         {
-            return new
+            g.Id,
+            g.Name,
+            Admin = admin is null ? null : new
             {
-                g.Id,
-                g.Name,
-                Admin = admin is null ? null : new
+                admin.Id,
+                admin.Email,
+                FullName = $"{admin.FirstName} {admin.FamilyName}".Trim()
+            },
+            Members = users
+                .Where(u => u.Id != g.AdminId)
+                .Select(u => new
                 {
-                    admin.Id,
-                    admin.Email,
-                    FullName = $"{admin.FirstName} {admin.FamilyName}".Trim()
-                },
-                Members = users
-                    .Where(u => u.Id != g.AdminId)
-                    .Select(u => new
-                    {
-                        u.Id,
-                        u.Email,
-                        FullName = $"{u.FirstName} {u.FamilyName}".Trim()
-                    })
-                    .ToList()
-            };
-        }
+                    u.Id,
+                    u.Email,
+                    FullName = $"{u.FirstName} {u.FamilyName}".Trim()
+                })
+                .ToList()
+        };
 
         private static object ProjectLite(Group g, bool isAdmin) => new
         {
@@ -73,8 +69,40 @@ namespace TRACKEXPENSES.Server.Controllers
             return await _userManager.IsInRoleAsync(me, "GROUPADMINISTRATOR");
         }
 
+        // Se groupId vier vazio, escolhe um grupo do utilizador (admin tem prioridade).
+        private async Task<string?> ResolveGroupIdAsync(string? groupId, CancellationToken ct)
+        {
+            var meId = CurrentUserId();
+            if (string.IsNullOrEmpty(meId)) return null;
+
+            if (!string.IsNullOrWhiteSpace(groupId))
+            {
+                var belongs = await _context.Groups
+                    .AnyAsync(g => g.Id == groupId && (g.AdminId == meId || g.Users.Any(u => u.Id == meId)), ct);
+                return belongs ? groupId : null;
+            }
+
+            var adminGroup = await _context.Groups
+                .AsNoTracking()
+                .Where(g => g.AdminId == meId)
+                .OrderBy(g => g.Name)
+                .Select(g => g.Id)
+                .FirstOrDefaultAsync(ct);
+            if (!string.IsNullOrEmpty(adminGroup)) return adminGroup;
+
+            var memberGroup = await _context.Groups
+                .AsNoTracking()
+                .Where(g => g.Users.Any(u => u.Id == meId))
+                .OrderBy(g => g.Name)
+                .Select(g => g.Id)
+                .FirstOrDefaultAsync(ct);
+
+            return memberGroup;
+        }
+
         /* ----------------------------- create/register ----------------------------- */
 
+        [AllowAnonymous]
         [HttpPost("Register")]
         public async Task<IActionResult> Register([FromBody] GroupRegisterRequest req, CancellationToken ct)
         {
@@ -112,7 +140,6 @@ namespace TRACKEXPENSES.Server.Controllers
             _context.Groups.Add(group);
 
             const string roleName = "GROUPADMINISTRATOR";
-
             var hasRole = await _userManager.IsInRoleAsync(admin, roleName);
             if (!hasRole)
             {
@@ -138,24 +165,19 @@ namespace TRACKEXPENSES.Server.Controllers
 
         /* ----------------------------- code check ----------------------------- */
 
+        [AllowAnonymous]
         [Description("This endpoint allows a user to register or join a group.")]
         [HttpPost("check-code")]
         public async Task<IActionResult> CodeGroupCheck([FromBody] CheckGroupCodeRequest request)
         {
-            var response = await codeGroupCheckBd(request);
-            if (response == null) return NotFound(new { message = "Code can't be null." });
-            return Ok(response);
-        }
-
-        [NonAction]
-        public async Task<bool?> codeGroupCheckBd(CheckGroupCodeRequest request)
-        {
+            if (request is null) return BadRequest(new { message = "Request cannot be null." });
             var exists = await _codeService.CheckGroupCodeAsync(request);
-            return exists;
+            return Ok(exists);
         }
 
         /* ----------------------------- queries existentes ----------------------------- */
 
+        [AllowAnonymous]
         [HttpPost("GetGroupsByUserEmail")]
         public async Task<IActionResult> GetGroupsByUserEmail([FromBody] UserEmailRequest request)
         {
@@ -163,7 +185,6 @@ namespace TRACKEXPENSES.Server.Controllers
             return Ok(grupos);
         }
 
-        [Authorize]
         [HttpGet("List")]
         public async Task<IActionResult> List([FromQuery] string? email = null, CancellationToken ct = default)
         {
@@ -220,7 +241,6 @@ namespace TRACKEXPENSES.Server.Controllers
             return Ok(data);
         }
 
-        [Authorize]
         [HttpDelete("Leave")]
         public async Task<IActionResult> LeaveByQuery([FromQuery] string id, CancellationToken ct = default)
         {
@@ -256,8 +276,7 @@ namespace TRACKEXPENSES.Server.Controllers
             }
 
             var me = group.Users.FirstOrDefault(u => u.Id == meId);
-            if (me != null)
-                group.Users.Remove(me);
+            if (me != null) group.Users.Remove(me);
 
             await _context.SaveChangesAsync(ct);
             return Ok(new { left = true });
@@ -328,7 +347,6 @@ namespace TRACKEXPENSES.Server.Controllers
             CancellationToken ct = default)
             => Update(id, name, usersId, ct);
 
-        [Authorize]
         [HttpGet("Get")]
         public async Task<IActionResult> Get([FromQuery] string id, CancellationToken ct = default)
         {
@@ -345,7 +363,10 @@ namespace TRACKEXPENSES.Server.Controllers
                 g.Id,
                 g.Name,
                 Admin = admin == null ? null : new { admin.Id, admin.Email, FullName = (admin.FirstName + " " + admin.FamilyName).Trim() },
-                Members = g.Users.Where(u => u.Id != g.AdminId).Select(u => new { u.Id, u.Email, FullName = (u.FirstName + " " + u.FamilyName).Trim() }).ToList()
+                Members = g.Users
+                    .Where(u => u.Id != g.AdminId)
+                    .Select(u => new { u.Id, u.Email, FullName = (u.FirstName + " " + u.FamilyName).Trim() })
+                    .ToList()
             });
         }
 
@@ -380,13 +401,12 @@ namespace TRACKEXPENSES.Server.Controllers
         public Task<IActionResult> DeleteByPost([FromQuery] string id, CancellationToken ct = default)
             => DeleteInternal(id, ct);
 
-        /* ----------------------------- ALIASES NOVOS p/ compat ----------------------------- */
+        /* ----------------------------- ALIASES/Compat ----------------------------- */
 
-        // Admin only: grupos onde o utilizador atual é admin (formato simples)
-        [Authorize]
+        // Admin only (formato simples)
         [HttpGet("Admin")]
-        [HttpGet("/api/Groups/Admin")]          // alias absoluto
-        [HttpGet("/api/GroupAdmin/MyGroups")]   // alias absoluto (o mais usado no front antigo)
+        [HttpGet("/api/Groups/Admin")]
+        [HttpGet("/api/GroupAdmin/MyGroups")]
         public async Task<IActionResult> AdminOnly(CancellationToken ct = default)
         {
             var userId = CurrentUserId();
@@ -401,12 +421,11 @@ namespace TRACKEXPENSES.Server.Controllers
             return Ok(list.Select(g => ProjectLite(g, isAdmin: true)));
         }
 
-        // Listagem dos meus grupos (sou admin OU membro) — formato simples
-        [Authorize]
+        // Meus grupos (admin OU membro) — formato simples
         [HttpGet("ListMine")]
         [HttpGet("GetMyGroups")]
         [HttpGet("MyGroups")]
-        [HttpGet("/api/Groups/ListMine")]       // alias absoluto
+        [HttpGet("/api/Groups/ListMine")]
         public async Task<IActionResult> ListMine(CancellationToken ct = default)
         {
             var userId = CurrentUserId();
@@ -421,30 +440,29 @@ namespace TRACKEXPENSES.Server.Controllers
 
             return Ok(list.Select(x => new { id = x.Id, name = x.Name, isAdmin = x.IsAdmin }));
         }
+
         public sealed class GroupIdRequest
         {
             public string? GroupId { get; set; }
         }
 
-        // ---------- implementação comum ----------
-        private async Task<IActionResult> MembersInternal(string groupId, CancellationToken ct)
+        // Implementação comum (aceita groupId vazio -> auto-resolve)
+        private async Task<IActionResult> MembersInternal(string? groupId, CancellationToken ct)
         {
-            if (string.IsNullOrWhiteSpace(groupId))
-                return BadRequest(new { message = "groupId is required." });
+            var resolvedId = await ResolveGroupIdAsync(groupId, ct);
+            if (string.IsNullOrEmpty(resolvedId))
+                return NotFound(new { message = "Group not found or you don't belong to any." });
 
             var g = await _context.Groups
                 .AsNoTracking()
                 .Include(x => x.Users)
-                .SingleOrDefaultAsync(x => x.Id == groupId, ct);
+                .SingleOrDefaultAsync(x => x.Id == resolvedId, ct);
 
             if (g is null) return NotFound(new { message = "Group not found." });
 
-            var admin = await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == g.AdminId, ct);
+            var admin = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == g.AdminId, ct);
 
             var members = new List<object>();
-
             if (admin != null)
             {
                 members.Add(new
@@ -471,16 +489,44 @@ namespace TRACKEXPENSES.Server.Controllers
             return Ok(new { groupId = g.Id, groupName = g.Name, members });
         }
 
-        // ---------- GET (o que o front está a chamar) ----------
-        [Authorize]
+        // GET principal
         [HttpGet("Members")]
-        public Task<IActionResult> MembersGet([FromQuery] string groupId, CancellationToken ct = default)
+        public Task<IActionResult> MembersGet([FromQuery] string? groupId, CancellationToken ct = default)
             => MembersInternal(groupId, ct);
 
-        // ---------- POST opcional (para contornar 405 se precisares) ----------
-        [Authorize]
+        // POST opcional
         [HttpPost("Members")]
         public Task<IActionResult> MembersPost([FromBody] GroupIdRequest req, CancellationToken ct = default)
-            => MembersInternal(req?.GroupId ?? string.Empty, ct);
+            => MembersInternal(req?.GroupId, ct);
+
+        // ALIAS para compat com o front antigo: /api/Users/Members?groupId=
+        [HttpGet("/api/Users/Members")]
+        public Task<IActionResult> UsersMembersAlias([FromQuery] string? groupId, CancellationToken ct = default)
+            => MembersInternal(groupId, ct);
+
+        [Authorize]
+        [HttpGet("UserWallets")]
+        public async Task<IActionResult> GetUserWallets(
+    [FromQuery] string userId,
+    [FromQuery] bool includeArchived = false,
+    CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return BadRequest(new { message = "userId is required." });
+
+            var exists = await _context.Users.AsNoTracking().AnyAsync(u => u.Id == userId, ct);
+            if (!exists) return NotFound(new { message = "User not found." });
+
+            var q = _context.Wallets.AsNoTracking().Where(w => w.UserId == userId);
+            if (!includeArchived) q = q.Where(w => !w.IsArchived);
+
+            var list = await q
+                .OrderByDescending(w => w.IsPrimary)
+                .ThenBy(w => w.Name)
+                .Select(w => new { id = w.Id, name = w.Name, currency = w.Currency, isPrimary = w.IsPrimary })
+                .ToListAsync(ct);
+
+            return Ok(list);
+        }
     }
 }

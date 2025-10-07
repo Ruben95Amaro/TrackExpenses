@@ -15,7 +15,6 @@ function tr(t, key, fallback) {
 
 const isValidEmail = (v) => /\S+@\S+\.\S+/.test(v);
 
-// 👉 alterna aqui se o backend quiser raw string (true) ou objeto { email } (false)
 const USE_RAW_STRING = true;
 
 const ForgotPassword = () => {
@@ -43,17 +42,13 @@ const ForgotPassword = () => {
       const payload = USE_RAW_STRING ? JSON.stringify(email.trim()) : { email: email.trim() };
 
       const res = await apiCall.post("/User/Forgot-password", payload, {
-        // não deixamos o axios rejeitar automaticamente, nós é que validamos:
         validateStatus: () => true,
         headers: USE_RAW_STRING
           ? { "Content-Type": "application/json" }
           : { "Content-Type": "application/json" },
-        // se o teu apiCall tiver transformRequest padrão que re-serializa,
-        // isto garante que passa a raw string sem mexer:
         ...(USE_RAW_STRING ? { transformRequest: [(d) => d] } : {}),
       });
 
-      // ✅ só consideramos sucesso para 2xx
       if (res?.status < 200 || res?.status >= 300) {
         const apiMsg =
           res?.data?.message ||

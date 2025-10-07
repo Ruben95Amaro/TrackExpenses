@@ -64,9 +64,7 @@ export default function GenericTable({
     }
   };
 
-  const thDefault =
-    "px-6 py-3 text-sm font-bold uppercase tracking-wider whitespace-nowrap text-center";
-  const thClass = headerCellClassName || thDefault;
+  const thClass = headerCellClassName || "px-6 py-3 text-sm font-bold uppercase tracking-wider whitespace-nowrap text-center";
 
   return (
     <table

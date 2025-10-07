@@ -7,64 +7,68 @@ using TRACKEXPENSES.Server.Models;
 
 namespace TRACKEXPENSES.Server.Controllers
 {
-
     [ApiController]
     [Route("api/Administrator")]
     [Authorize(Roles = "ADMINISTRATOR")]
-    public class AdministrationController(RoleManager<IdentityRole> roleManager, UserManager<User> userManager, FinancasDbContext context) : ControllerBase
+    public class AdministrationController : ControllerBase
     {
-        private readonly RoleManager<IdentityRole> _roleManager = roleManager;
-        private readonly UserManager<User> _userManager = userManager;
-        private readonly FinancasDbContext _context = context;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly UserManager<User> _userManager;
+        private readonly FinancasDbContext _context;
+
+        public AdministrationController(
+            RoleManager<IdentityRole> roleManager,
+            UserManager<User> userManager,
+            FinancasDbContext context)
+        {
+            _roleManager = roleManager;
+            _userManager = userManager;
+            _context = context;
+        }
 
         [HttpGet("User/GetAllUsers")]
         public IActionResult ListClients()
         {
             var allClients = _context.Users
-    .Include(u => u.Groups)
-    .ToList();
+                .Include(u => u.Groups)
+                .ToList();
 
-            if (allClients == null)
-                return BadRequest("Dados inválidos.");
+            if (allClients is null || allClients.Count == 0)
+                return NotFound("Nenhum utilizador encontrado.");
 
             return Ok(new { ListUsers = allClients });
         }
 
-
         [HttpPost("User/DeleteUser")]
-        public async Task<IActionResult> DeleteUser([FromBody] string UserID)
+        public async Task<IActionResult> DeleteUser([FromBody] string userId)
         {
+            if (string.IsNullOrWhiteSpace(userId))
+                return BadRequest("ID do utilizador inválido.");
 
-            if (UserID == null) return NotFound("No user found");
+            var user = await _context.Users
+                .Include(u => u.Expenses)
+                .FirstOrDefaultAsync(u => u.Id == userId);
 
-            var existUser = context.Users.Include(user => user.Expenses).SingleOrDefault(c => c.Id == UserID);
-            if (existUser == null) return NotFound("No user found");
-            if (existUser.Expenses.Count > 0)
+            if (user == null)
+                return NotFound("Utilizador não encontrado.");
+
+            if (user.Expenses?.Count > 0)
             {
-                foreach (var clientExpense in existUser.Expenses)
-                {
-                    var bdExpense = _context.Expenses.FirstOrDefault(exp => exp.Id == clientExpense.Id);
-                    if (bdExpense != null)
-                    {
-                        context.Expenses.Remove(bdExpense);
-                    }
-
-                }
-                await context.SaveChangesAsync();
+                _context.Expenses.RemoveRange(user.Expenses);
+                await _context.SaveChangesAsync();
             }
-            context.Users.Remove(existUser);
-            var removeUserResponse = await context.SaveChangesAsync();
-            return Ok("User Deleted");
 
+            _context.Users.Remove(user);
+            await _context.SaveChangesAsync();
+
+            return Ok("Utilizador eliminado com sucesso.");
         }
 
         [HttpGet("GetAllGroupsNames")]
         public IActionResult GetAllGroupsNames()
         {
-            var groupNames = _context.GroupOfUsers.ToList();
-
-            return Ok(new { GroupNames = groupNames });
+            var groups = _context.GroupOfUsers.ToList();
+            return Ok(new { GroupNames = groups });
         }
-
     }
 }

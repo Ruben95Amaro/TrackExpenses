@@ -29,6 +29,7 @@ export default function UsersTable() {
     (async () => {
       try {
         const res = await apiCall.get("Administrator/User/GetAllUsers");
+        console.log('res', res?.data?.ListUsers);
         const list = res?.data?.ListUsers?.$values ?? res?.data?.ListUsers ?? [];
         if (alive) setUsers(Array.isArray(list) ? list : []);
       } catch (e) {

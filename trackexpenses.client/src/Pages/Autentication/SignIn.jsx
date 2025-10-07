@@ -1,4 +1,3 @@
-// src/Pages/Authentication/SignIn.jsx
 import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Calendar, Phone } from "lucide-react";
@@ -38,7 +37,6 @@ export default function SignIn() {
     else hiddenDateRef.current?.click();
   };
 
-  /* ─────────── Validações ─────────── */
   const validateEmail = () => {
     const email = formData.email?.trim().toLowerCase() || "";
     const regex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -180,7 +178,6 @@ export default function SignIn() {
                   </div>
                 </div>
               ) : field.lower === "phonenumber" ? (
-                // 👇 Telefone só números
                 <Input
                   key={field.lower}
                   name={field.lower}

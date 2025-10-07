@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Globalization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 using TRACKEXPENSES.Server.Data;
 using TRACKEXPENSES.Server.Models;
 
@@ -8,31 +8,52 @@ namespace TRACKEXPENSES.Server.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class AdminDashboardController(FinancasDbContext context) : ControllerBase
+    public class AdminDashboardController : ControllerBase
     {
-        private readonly FinancasDbContext _db = context;
+        private readonly FinancasDbContext _db;
+        public AdminDashboardController(FinancasDbContext db) => _db = db;
 
-        static IEnumerable<(DateOnly Start, DateOnly End, string Label)> Buckets(DateOnly from, DateOnly to, string g)
+        /* ---------------- helpers ---------------- */
+        private static bool TryParseDate(string? s, out DateOnly d)
         {
-            var list = new List<(DateOnly, DateOnly, string)>(); var cur = from;
+            if (!string.IsNullOrWhiteSpace(s) &&
+                DateOnly.TryParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var x))
+            { d = x; return true; }
+            d = default; return false;
+        }
+
+        private static IEnumerable<(DateOnly Start, DateOnly End, string Label)> Buckets(DateOnly from, DateOnly to, string g)
+        {
+            var list = new List<(DateOnly, DateOnly, string)>();
+            var cur = from;
+
             if (g == "day")
-            { while (cur <= to) { list.Add((cur, cur, cur.ToString("dd/MM"))); cur = cur.AddDays(1); } }
+            {
+                while (cur <= to)
+                {
+                    list.Add((cur, cur, cur.ToString("dd/MM")));
+                    cur = cur.AddDays(1);
+                }
+            }
             else if (g == "week")
             {
                 while (cur <= to)
                 {
                     int diff = (7 + (cur.DayOfWeek - DayOfWeek.Monday)) % 7;
-                    var start = cur.AddDays(-diff); var end = start.AddDays(6); if (end > to) end = to;
+                    var start = cur.AddDays(-diff);
+                    var end = start.AddDays(6);
+                    if (end > to) end = to;
                     list.Add((start, end, $"W{ISOWeek.GetWeekOfYear(start.ToDateTime(TimeOnly.MinValue))}"));
                     cur = end.AddDays(1);
                 }
             }
-            else
+            else // month
             {
                 while (cur <= to)
                 {
                     var start = new DateOnly(cur.Year, cur.Month, 1);
-                    var end = start.AddMonths(1).AddDays(-1); if (end > to) end = to;
+                    var end = start.AddMonths(1).AddDays(-1);
+                    if (end > to) end = to;
                     list.Add((start, end, start.ToString("MM/yyyy")));
                     cur = end.AddDays(1);
                 }
@@ -40,18 +61,54 @@ namespace TRACKEXPENSES.Server.Controllers
             return list;
         }
 
-        [HttpGet("Summary")]
-        public async Task<IActionResult> Summary([FromQuery] DateOnly from, [FromQuery] DateOnly to)
+        private IQueryable<EarningInstance> EarningsScope(DateOnly from, DateOnly to, Guid? userId, Guid? walletId)
         {
-            var ei = _db.EarningInstances.Include(i => i.Earning)
-                     .Where(i => (i.ExpectedDate ?? i.Earning.Date) >= from.ToDateTime(TimeOnly.MinValue)
-                              && (i.ExpectedDate ?? i.Earning.Date) <= to.ToDateTime(TimeOnly.MaxValue));
-            var xi = _db.ExpenseInstances.Include(i => i.Expense)
-                     .Where(i => i.DueDate >= from.ToDateTime(TimeOnly.MinValue)
-                              && i.DueDate <= to.ToDateTime(TimeOnly.MaxValue));
+            string? uidStr = userId?.ToString();
+            string? widStr = walletId?.ToString();
+
+            var q = _db.EarningInstances
+                .Include(i => i.Earning).ThenInclude(e => e.Wallet)
+                .Where(i => (i.ExpectedDate ?? i.Earning.Date) >= from.ToDateTime(TimeOnly.MinValue)
+                         && (i.ExpectedDate ?? i.Earning.Date) <= to.ToDateTime(TimeOnly.MaxValue));
+
+            if (!string.IsNullOrEmpty(widStr)) q = q.Where(i => i.Earning.WalletId == widStr);
+            if (!string.IsNullOrEmpty(uidStr)) q = q.Where(i => i.Earning.Wallet.UserId == uidStr);
+            return q;
+        }
+
+        private IQueryable<ExpenseInstance> ExpensesScope(DateOnly from, DateOnly to, Guid? userId, Guid? walletId)
+        {
+            string? uidStr = userId?.ToString();
+            string? widStr = walletId?.ToString();
+
+            var q = _db.ExpenseInstances
+                .Include(i => i.Expense).ThenInclude(e => e.Wallet)
+                .Where(i => i.DueDate >= from.ToDateTime(TimeOnly.MinValue)
+                         && i.DueDate <= to.ToDateTime(TimeOnly.MaxValue));
+
+            if (!string.IsNullOrEmpty(widStr)) q = q.Where(i => i.Expense.WalletId == widStr);
+            if (!string.IsNullOrEmpty(uidStr)) q = q.Where(i => i.Expense.Wallet.UserId == uidStr);
+            return q;
+        }
+
+        /* ---------------- endpoints ---------------- */
+
+        [HttpGet("Summary")]
+        public async Task<IActionResult> Summary(
+            [FromQuery] string from,
+            [FromQuery] string to,
+            [FromQuery] Guid? userId = null,
+            [FromQuery] Guid? walletId = null)
+        {
+            if (!TryParseDate(from, out var df) || !TryParseDate(to, out var dt))
+                return BadRequest("Formato de data inválido. Usa yyyy-MM-dd.");
+
+            var ei = EarningsScope(df, dt, userId, walletId);
+            var xi = ExpensesScope(df, dt, userId, walletId);
 
             var incExpected = await ei.SumAsync(i => (decimal?)i.Amount) ?? 0m;
             var incReceived = await ei.Where(i => i.IsReceived || i.ReceivedAtUtc != null).SumAsync(i => (decimal?)i.Amount) ?? 0m;
+
             var expExpected = await xi.SumAsync(i => (decimal?)i.Value) ?? 0m;
             var expPaid = await xi.SumAsync(i => (decimal?)i.PaidAmount) ?? 0m;
 
@@ -61,6 +118,7 @@ namespace TRACKEXPENSES.Server.Controllers
 
             return Ok(new
             {
+                currency = "EUR",
                 totalIncome = incReceived,
                 totalExpense = expPaid,
                 net = incReceived - expPaid,
@@ -72,161 +130,103 @@ namespace TRACKEXPENSES.Server.Controllers
             });
         }
 
-        // split: none | category | group
         [HttpGet("TimeSeries")]
-        public async Task<IActionResult> TimeSeries([FromQuery] DateOnly from, [FromQuery] DateOnly to,
-            [FromQuery] string granularity = "month", [FromQuery] string split = "none")
+        public async Task<IActionResult> TimeSeries(
+            [FromQuery] string from,
+            [FromQuery] string to,
+            [FromQuery] string granularity = "month",
+            [FromQuery] Guid? userId = null,
+            [FromQuery] Guid? walletId = null)
         {
-            var buckets = Buckets(from, to, granularity);
+            if (!TryParseDate(from, out var df) || !TryParseDate(to, out var dt))
+                return BadRequest("Formato de data inválido. Usa yyyy-MM-dd.");
 
-            if (split == "none")
+            var data = new List<object>();
+
+            foreach (var b in Buckets(df, dt, granularity))
             {
-                var data = new List<object>();
-                foreach (var b in buckets)
-                {
-                    var inc = await _db.EarningInstances.Include(i => i.Earning)
-                        .Where(i => (i.ExpectedDate ?? i.Earning.Date) >= b.Start.ToDateTime(TimeOnly.MinValue)
-                                 && (i.ExpectedDate ?? i.Earning.Date) <= b.End.ToDateTime(TimeOnly.MaxValue))
-                        .Where(i => i.IsReceived || i.ReceivedAtUtc != null)
-                        .SumAsync(i => (decimal?)i.Amount) ?? 0m;
-
-                    var exp = await _db.ExpenseInstances.Include(i => i.Expense)
-                        .Where(i => i.DueDate >= b.Start.ToDateTime(TimeOnly.MinValue)
-                                 && i.DueDate <= b.End.ToDateTime(TimeOnly.MaxValue))
-                        .SumAsync(i => (decimal?)i.PaidAmount) ?? 0m;
-
-                    data.Add(new { label = b.Label, income = inc, expense = exp });
-                }
-                return Ok(data);
-            }
-
-            if (split == "category")
-            {
-                // devolve top 5 categorias por valor e bucket
-                var catInc = await _db.EarningInstances.Include(i => i.Earning)
-                    .Where(i => (i.ExpectedDate ?? i.Earning.Date) >= from.ToDateTime(TimeOnly.MinValue)
-                             && (i.ExpectedDate ?? i.Earning.Date) <= to.ToDateTime(TimeOnly.MaxValue))
-                    .Where(i => i.IsReceived || i.ReceivedAtUtc != null)
-                    .GroupBy(i => i.Earning.Category)
-                    .Select(g => new { category = g.Key, amount = g.Sum(x => x.Amount) })
-                    .OrderByDescending(x => x.amount).Take(5).Select(x => x.category).ToListAsync();
-
-                var catExp = await _db.ExpenseInstances.Include(i => i.Expense)
-                    .Where(i => i.DueDate >= from.ToDateTime(TimeOnly.MinValue)
-                             && i.DueDate <= to.ToDateTime(TimeOnly.MaxValue))
-                    .GroupBy(i => i.Expense.Category!)
-                    .Select(g => new { category = g.Key, amount = g.Sum(x => x.PaidAmount) })
-                    .OrderByDescending(x => x.amount).Take(5).Select(x => x.category).ToListAsync();
-
-                var topCats = catInc.Union(catExp).Distinct().Take(6).ToList();
-
-                var data = new List<Dictionary<string, object>>();
-                foreach (var b in buckets)
-                {
-                    var row = new Dictionary<string, object> { ["label"] = b.Label };
-                    foreach (var c in topCats)
-                    {
-                        var inc = await _db.EarningInstances.Include(i => i.Earning)
-                            .Where(i => (i.ExpectedDate ?? i.Earning.Date) >= b.Start.ToDateTime(TimeOnly.MinValue)
-                                     && (i.ExpectedDate ?? i.Earning.Date) <= b.End.ToDateTime(TimeOnly.MaxValue))
-                            .Where(i => (i.IsReceived || i.ReceivedAtUtc != null) && i.Earning.Category == c)
+                var inc = await EarningsScope(b.Start, b.End, userId, walletId)
+                            .Where(i => i.IsReceived || i.ReceivedAtUtc != null)
                             .SumAsync(i => (decimal?)i.Amount) ?? 0m;
 
-                        var exp = await _db.ExpenseInstances.Include(i => i.Expense)
-                            .Where(i => i.DueDate >= b.Start.ToDateTime(TimeOnly.MinValue)
-                                     && i.DueDate <= b.End.ToDateTime(TimeOnly.MaxValue)
-                                     && i.Expense.Category == c)
+                var exp = await ExpensesScope(b.Start, b.End, userId, walletId)
                             .SumAsync(i => (decimal?)i.PaidAmount) ?? 0m;
 
-                        row[$"inc:{c}"] = inc;
-                        row[$"exp:{c}"] = exp;
-                    }
-                    data.Add(row);
-                }
-                return Ok(data);
+                data.Add(new { label = b.Label, income = inc, expense = exp });
             }
 
-            if (split == "group")
-            {
-                // Top 5 grupos por volume no período
-                var top = await _db.ExpenseInstances.Include(i => i.Expense)
-                    .Where(i => i.DueDate >= from.ToDateTime(TimeOnly.MinValue)
-                             && i.DueDate <= to.ToDateTime(TimeOnly.MaxValue))
-                    .Join(_db.Set<Dictionary<string, object>>("UserGroups"),
-                          i => i.Expense.Wallet.UserId,
-                          ug => EF.Property<string>(ug, "UserId"),
-                          (i, ug) => new { i, groupId = EF.Property<string>(ug, "GroupId") })
-                    .GroupBy(x => x.groupId)
-                    .Select(g => new { groupId = g.Key, amount = g.Sum(x => x.i.PaidAmount) })
-                    .OrderByDescending(x => x.amount).Take(5).Select(x => x.groupId).ToListAsync();
-
-                var data = new List<Dictionary<string, object>>();
-                foreach (var b in buckets)
-                {
-                    var row = new Dictionary<string, object> { ["label"] = b.Label };
-                    foreach (var g in top)
-                    {
-                        var inc = await _db.EarningInstances.Include(i => i.Earning)
-                            .Join(_db.Set<Dictionary<string, object>>("UserGroups"),
-                                  i => i.Earning.Wallet.UserId,
-                                  ug => EF.Property<string>(ug, "UserId"),
-                                  (i, ug) => new { i, groupId = EF.Property<string>(ug, "GroupId") })
-                            .Where(x => x.groupId == g)
-                            .Where(x => (x.i.ExpectedDate ?? x.i.Earning.Date) >= b.Start.ToDateTime(TimeOnly.MinValue)
-                                     && (x.i.ExpectedDate ?? x.i.Earning.Date) <= b.End.ToDateTime(TimeOnly.MaxValue))
-                            .Where(x => x.i.IsReceived || x.i.ReceivedAtUtc != null)
-                            .SumAsync(x => (decimal?)x.i.Amount) ?? 0m;
-
-                        var exp = await _db.ExpenseInstances.Include(i => i.Expense)
-                            .Join(_db.Set<Dictionary<string, object>>("UserGroups"),
-                                  i => i.Expense.Wallet.UserId,
-                                  ug => EF.Property<string>(ug, "UserId"),
-                                  (i, ug) => new { i, groupId = EF.Property<string>(ug, "GroupId") })
-                            .Where(x => x.groupId == g)
-                            .Where(x => x.i.DueDate >= b.Start.ToDateTime(TimeOnly.MinValue)
-                                     && x.i.DueDate <= b.End.ToDateTime(TimeOnly.MaxValue))
-                            .SumAsync(x => (decimal?)x.i.PaidAmount) ?? 0m;
-
-                        row[$"inc:{g}"] = inc;
-                        row[$"exp:{g}"] = exp;
-                    }
-                    data.Add(row);
-                }
-                return Ok(data);
-            }
-
-            return BadRequest("split inválido");
+            return Ok(data);
         }
 
-        [HttpGet("WalletsTop")]
-        public async Task<IActionResult> WalletsTop([FromQuery] DateOnly from, [FromQuery] DateOnly to, [FromQuery] int take = 10)
+        [HttpGet("StatusSplit")]
+        public async Task<IActionResult> StatusSplit(
+            [FromQuery] string from,
+            [FromQuery] string to,
+            [FromQuery(Name = "granularity")] string groupBy = "month",
+            [FromQuery] string type = "income",
+            [FromQuery] Guid? userId = null,
+            [FromQuery] Guid? walletId = null)
         {
-            var inc = await _db.EarningInstances.Include(i => i.Earning).ThenInclude(e => e.Wallet)
-                .Where(i => (i.ExpectedDate ?? i.Earning.Date) >= from.ToDateTime(TimeOnly.MinValue)
-                         && (i.ExpectedDate ?? i.Earning.Date) <= to.ToDateTime(TimeOnly.MaxValue))
-                .Where(i => i.IsReceived || i.ReceivedAtUtc != null)
-                .GroupBy(i => new { i.Earning.WalletId, i.Earning.Wallet.Name })
-                .Select(g => new { g.Key.WalletId, g.Key.Name, Amount = g.Sum(x => x.Amount) })
-                .ToListAsync();
+            if (!TryParseDate(from, out var df) || !TryParseDate(to, out var dt))
+                return BadRequest("Formato de data inválido. Usa yyyy-MM-dd.");
 
-            var exp = await _db.ExpenseInstances.Include(i => i.Expense).ThenInclude(e => e.Wallet)
-                .Where(i => i.DueDate >= from.ToDateTime(TimeOnly.MinValue) && i.DueDate <= to.ToDateTime(TimeOnly.MaxValue))
-                .GroupBy(i => new { i.Expense.WalletId, i.Expense.Wallet.Name })
-                .Select(g => new { g.Key.WalletId, g.Key.Name, Amount = g.Sum(x => x.PaidAmount) })
-                .ToListAsync();
+            var data = new List<object>();
+            foreach (var b in Buckets(df, dt, groupBy))
+            {
+                if (type.Equals("income", StringComparison.OrdinalIgnoreCase))
+                {
+                    var scope = EarningsScope(b.Start, b.End, userId, walletId);
+                    var expected = await scope.SumAsync(i => (decimal?)i.Amount) ?? 0m;
+                    var received = await scope.Where(i => i.IsReceived || i.ReceivedAtUtc != null)
+                                              .SumAsync(i => (decimal?)i.Amount) ?? 0m;
+                    data.Add(new { label = b.Label, expected, received, pending = expected - received });
+                }
+                else
+                {
+                    var scope = ExpensesScope(b.Start, b.End, userId, walletId);
+                    var expected = await scope.SumAsync(i => (decimal?)i.Value) ?? 0m;
+                    var paid = await scope.SumAsync(i => (decimal?)i.PaidAmount) ?? 0m;
+                    data.Add(new { label = b.Label, expected, paid, pending = expected - paid });
+                }
+            }
 
-            var all = inc.Select(x => x.WalletId!).Union(exp.Select(x => x.WalletId!)).Distinct();
-            var result = all.Select(id => new {
-                walletId = id,
-                walletName = inc.FirstOrDefault(x => x.WalletId == id)?.Name
-                           ?? exp.FirstOrDefault(x => x.WalletId == id)?.Name ?? "—",
-                balance = (inc.FirstOrDefault(x => x.WalletId == id)?.Amount ?? 0m)
-                        - (exp.FirstOrDefault(x => x.WalletId == id)?.Amount ?? 0m)
-            })
-            .OrderByDescending(x => x.balance)
-            .Take(take);
+            return Ok(data);
+        }
 
-            return Ok(result);
+        [HttpGet("Categories")]
+        public async Task<IActionResult> Categories(
+            [FromQuery] string from,
+            [FromQuery] string to,
+            [FromQuery] string type = "income",
+            [FromQuery] Guid? userId = null,
+            [FromQuery] Guid? walletId = null)
+        {
+            if (!TryParseDate(from, out var df) || !TryParseDate(to, out var dt))
+                return BadRequest("Formato de data inválido. Usa yyyy-MM-dd.");
+
+            if (type.Equals("income", StringComparison.OrdinalIgnoreCase))
+            {
+                var q = await EarningsScope(df, dt, userId, walletId)
+                    .Where(i => i.IsReceived || i.ReceivedAtUtc != null)
+                    .Include(i => i.Earning)
+                    .GroupBy(i => i.Earning.Category)
+                    .Select(g => new { category = g.Key, amount = g.Sum(x => x.Amount) })
+                    .OrderByDescending(x => x.amount)
+                    .ToListAsync();
+
+                return Ok(q);
+            }
+            else
+            {
+                var q = await ExpensesScope(df, dt, userId, walletId)
+                    .Include(i => i.Expense)
+                    .GroupBy(i => i.Expense.Category!)
+                    .Select(g => new { category = g.Key, amount = g.Sum(x => x.PaidAmount) })
+                    .OrderByDescending(x => x.amount)
+                    .ToListAsync();
+
+                return Ok(q);
+            }
         }
     }
 }
