@@ -1,3 +1,4 @@
+// src/pages/Earnings/ListEarnings.jsx
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Title from "../../components/Titles/TitlePage";
@@ -5,7 +6,7 @@ import Button from "../../components/Buttons/Button";
 import GenericFilter from "../../components/Tables/GenericFilter";
 import GenericTable from "../../components/Tables/GenericTable";
 import StatCard from "../../components/UI/StatCard";
-import Card from "../../components/UI/Card";
+// import Card from "../../components/UI/Card"; // <-- não usar aqui
 import { useTheme } from "../../styles/Theme/Theme";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
@@ -21,8 +22,10 @@ const N = (v) => (v ?? "").toString().trim();
 
 function Chip({ children }) {
   return (
-    <span className="inline-block px-2 py-1 rounded-full text-xs"
-          style={{ background: "rgba(148,163,184,0.18)", color: "#94A3B8" }}>
+    <span
+      className="inline-block px-2 py-1 rounded-full text-xs"
+      style={{ background: "rgba(148,163,184,0.18)", color: "#94A3B8" }}
+    >
       {children}
     </span>
   );
@@ -47,7 +50,7 @@ export default function ListEarnings() {
   }, [wallets]);
 
   const walletOptions = useMemo(() => ([
-    { value: "all", label: t("wallets.all") },
+    { value: "all", label: t?.("wallets.all") || "All wallets" },
     ...wallets.map(w => ({ value: w.Id ?? w.id, label: N(w.Name ?? w.name) }))
   ]), [wallets, t]);
 
@@ -62,9 +65,9 @@ export default function ListEarnings() {
         if (res?.status >= 200 && res?.status < 300) {
           const list = Array.isArray(res.data) ? res.data : unwrap(res.data);
           if (alive) setItems(list || []);
-        } else if (alive) setErrorSubmit(res?.data?.message || t("earnings.empty"));
+        } else if (alive) setErrorSubmit(res?.data?.message || t?.("earnings.empty") || "No data");
       } catch {
-        if (alive) setErrorSubmit(t("earnings.empty"));
+        if (alive) setErrorSubmit(t?.("earnings.empty") || "No data");
       } finally {
         if (alive) setLoading(false);
       }
@@ -78,9 +81,11 @@ export default function ListEarnings() {
       try {
         const r = await apiCall.get(EP_WALLETS, { validateStatus: () => true });
         if (!alive) return;
-        const list = (r?.status >= 200 && r?.status < 300) ? (Array.isArray(r.data) ? r.data : unwrap(r.data)) : [];
+        const list = (r?.status >= 200 && r?.status < 300)
+          ? (Array.isArray(r.data) ? r.data : unwrap(r.data))
+          : [];
         setWallets(list || []);
-      } catch {}
+      } catch {/* ignore */}
     })();
     return () => { alive = false; };
   }, []);
@@ -88,7 +93,7 @@ export default function ListEarnings() {
   const categoryOptions = useMemo(() => {
     const names = new Set((items || []).map((x) => N(x?.Category)).filter(Boolean));
     return [
-      { value: "all", label: t("common.all") },
+      { value: "all", label: t?.("common.all") || "All" },
       ...[...names].sort().map((v) => ({ value: v, label: v })),
     ];
   }, [items, t]);
@@ -140,36 +145,48 @@ export default function ListEarnings() {
 
   return (
     <div className="space-y-6 min-h-screen">
+      {/* Header + criar */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <Title text={t("earnings.list")} />
-        <Button onClick={() => navigate("/CreateEarning")}>{t("earnings.new")}</Button>
+        <Title text={t?.("earnings.list") || "Earnings"} />
+        <Button onClick={() => navigate("/CreateEarning")}>
+          {t?.("earnings.new") || "New earning"}
+        </Button>
       </div>
 
+      {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title={t("earnings.table.total")} value={totalPlanned.toLocaleString(undefined,{style:"currency",currency:"EUR"})} />
-        <StatCard title={t("earnings.status.received")} value={`${totalReceived}/${totalInst}`} />
-        <StatCard title={t("earnings.status.not_received")} value={`${Math.max(0,totalInst-totalReceived)}/${totalInst}`} />
+        <StatCard title={t?.("earnings.table.total") || "Total planned"} value={totalPlanned.toLocaleString(undefined,{style:"currency",currency:"EUR"})} />
+        <StatCard title={t?.("earnings.status.received") || "Received"} value={`${totalReceived}/${totalInst}`} />
+        <StatCard title={t?.("earnings.status.not_received") || "Pending"} value={`${Math.max(0,totalInst-totalReceived)}/${totalInst}`} />
       </div>
 
-      <Card padding="sm" className="p-4">
-        <GenericFilter
-          value={flt}
-          onChange={setFlt}
-          t={t}
-          theme={theme}
-          searchPlaceholder={t("earnings.list")}
-          filters={[
-            { key: "category", type: "select", options: categoryOptions },
-            { key: "wallet",   type: "select", options: walletOptions },
-            { key: "received", type: "select", options: [
-              { value: "all", label: t("common.all") },
-              { value: "received", label: t("earnings.status.received") },
-              { value: "pending",  label: t("earnings.status.not_received") },
-            ] }
-          ]}
-        />
-      </Card>
+      {/* Filtro: botão de toggle FORA do painel (sem Card) */}
+      <GenericFilter
+        className="mt-2"
+        value={flt}
+        onChange={setFlt}
+        t={t}
+        theme={theme}
+        showToggle
+        defaultOpen
+        showSearch
+        searchPlaceholder={t?.("earnings.searchPlaceholder") || "Search name, description or category..."}
+        filters={[
+          { key: "category", type: "select", options: categoryOptions },
+          { key: "wallet",   type: "select", options: walletOptions },
+          {
+            key: "received",
+            type: "select",
+            options: [
+              { value: "all",      label: t?.("common.all") || "All" },
+              { value: "received", label: t?.("earnings.status.received") || "Received" },
+              { value: "pending",  label: t?.("earnings.status.not_received") || "Pending" },
+            ],
+          },
+        ]}
+      />
 
+      {/* Tabela */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className="relative overflow-x-auto">
           <GenericTable
@@ -180,11 +197,11 @@ export default function ListEarnings() {
             loading={loading}
             rowKey={(e) => e?.Id}
             stickyHeader
-            emptyMessage={t("earnings.empty")}
+            emptyMessage={t?.("earnings.empty") || "No results"}
             edit={{ enabled: true, onEdit: (e) => navigate(ROUTE_EDIT(e?.Id)) }}
             remove={{
               enabled: true,
-              confirmMessage: t("earnings.deleteConfirm") || "Delete?",
+              confirmMessage: t?.("earnings.deleteConfirm") || "Delete?",
               doDelete: async (e) => {
                 const res = await apiCall.post(EP_DELETE, { Id: e?.Id }, { validateStatus: () => true });
                 if (res?.status >= 200 && res?.status < 300) {

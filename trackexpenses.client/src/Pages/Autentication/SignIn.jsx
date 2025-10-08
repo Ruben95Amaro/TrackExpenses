@@ -1,20 +1,21 @@
 import { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Calendar, Phone } from "lucide-react";
+import { Calendar } from "lucide-react";
 
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 
 import Card from "../../components/UI/Card";
 import Input from "../../components/Form/Input";
 import Button from "../../components/Buttons/Button";
 
-import { pageConfigurations, getPasswordValidation } from "../../utilis/Configurations/SigninConfiguration";
+import {
+  pageConfigurations,
+  getPasswordValidation,
+} from "../../utilis/Configurations/SigninConfiguration";
 
 export default function SignIn() {
   const { theme } = useTheme();
-  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
@@ -24,7 +25,8 @@ export default function SignIn() {
 
   const hiddenDateRef = useRef(null);
 
-  const { firstConfigurationPage, secondconfigurationPage } = pageConfigurations();
+  const { firstConfigurationPage, secondconfigurationPage } =
+    pageConfigurations();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,9 +41,10 @@ export default function SignIn() {
 
   const validateEmail = () => {
     const email = formData.email?.trim().toLowerCase() || "";
-    const regex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    const regex =
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
     if (!regex.test(email)) {
-      setErrors((p) => ({ ...p, email: t("auth.errors.emailInvalid") || "Formato de email inválido" }));
+      setErrors((p) => ({ ...p, email: "Invalid email format." }));
       return false;
     }
     return true;
@@ -50,17 +53,20 @@ export default function SignIn() {
   const verifyEmail_Bd = async () => {
     const email = formData.email?.trim().toLowerCase();
     if (!email) {
-      setErrors((p) => ({ ...p, email: t("auth.errors.emailRequired") || "Email obrigatório" }));
+      setErrors((p) => ({ ...p, email: "Email is required." }));
       return false;
     }
 
     const response = await apiCall.post("/User/EmailCheckInDb", email);
     if (!response.ok) {
-      setErrors((p) => ({ ...p, email: response.error?.message || t("auth.errors.emailCheckFailed") || "Erro ao verificar email" }));
+      setErrors((p) => ({
+        ...p,
+        email: response.error?.message || "Failed to verify email.",
+      }));
       return false;
     }
     if (response.data === true) {
-      setErrors((p) => ({ ...p, email: t("auth.errors.emailAlreadyRegistered") || "Email já registado" }));
+      setErrors((p) => ({ ...p, email: "Email is already registered." }));
       return false;
     }
     return true;
@@ -70,12 +76,18 @@ export default function SignIn() {
     const pwd = formData.password || "";
     const confirm = formData.confirmpassword || "";
     if (pwd !== confirm) {
-      setErrors((p) => ({ ...p, confirmpassword: t("auth.errors.passwordsDontMatch") || "As passwords não coincidem." }));
+      setErrors((p) => ({
+        ...p,
+        confirmpassword: "Passwords do not match.",
+      }));
       return false;
     }
     const list = getPasswordValidation(pwd);
     if (list.some((r) => !r.rule)) {
-      setErrors((p) => ({ ...p, password: list.map((r) => `${r.label}${r.rule ? r.valid : r.error}`) }));
+      setErrors((p) => ({
+        ...p,
+        password: list.map((r) => `${r.label}${r.rule ? r.valid : r.error}`),
+      }));
       return false;
     }
     return true;
@@ -115,15 +127,21 @@ export default function SignIn() {
       >
         {/* Header */}
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold mb-2" style={{ color: theme.colors.text.primary }}>
-            {t("auth.createTitle") || "Criar Conta"}
+          <h2
+            className="text-3xl font-bold mb-2"
+            style={{ color: theme.colors.text.primary }}
+          >
+            Create your account
           </h2>
           <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
-            {t("auth.createSubtitle") || "Só falta um passo para concluíres o registo"}
+            Just one more step to complete your registration
           </p>
         </div>
 
-        <form onSubmit={step === 1 ? handleNext : handleSubmit} className="space-y-6">
+        <form
+          onSubmit={step === 1 ? handleNext : handleSubmit}
+          className="space-y-6"
+        >
           {step === 1 &&
             firstConfigurationPage.map((field) => (
               <Input
@@ -143,7 +161,10 @@ export default function SignIn() {
             secondconfigurationPage.map((field) =>
               field.lower === "birthday" ? (
                 <div key="birthday">
-                  <label className="block text-sm mb-2" style={{ color: theme.colors.text.secondary }}>
+                  <label
+                    className="block text-sm mb-2"
+                    style={{ color: theme.colors.text.secondary }}
+                  >
                     {field.label}
                   </label>
                   <div className="relative">
@@ -189,7 +210,9 @@ export default function SignIn() {
                   value={formData[field.lower] || ""}
                   onChange={(e) => {
                     const onlyDigits = (e.target.value || "").replace(/\D/g, "");
-                    handleChange({ target: { name: field.lower, value: onlyDigits } });
+                    handleChange({
+                      target: { name: field.lower, value: onlyDigits },
+                    });
                   }}
                   onKeyDown={(e) => {
                     const blocked = ["e", "E", "+", "-", ".", ","];
@@ -214,53 +237,58 @@ export default function SignIn() {
             )}
 
           {errors.submit && (
-            <p className="text-sm text-center" style={{ color: theme.colors.error.main }}>
+            <p
+              className="text-sm text-center"
+              style={{ color: theme.colors.error.main }}
+            >
               {errors.submit}
             </p>
           )}
 
           <div className="pt-2">
             {step === 1 ? (
-<Button
-  type="submit"
-  size="md"
-  variant="primary"
-  fullWidth
-  className="!h-11 !px-6 !rounded-xl leading-none"
->
-  {t("auth.next") || "Seguinte"}
-</Button>
+              <Button
+                type="submit"
+                size="md"
+                variant="primary"
+                fullWidth
+                className="!h-11 !px-6 !rounded-xl leading-none"
+              >
+                Next
+              </Button>
             ) : (
-<div className="grid grid-cols-2 gap-3">
-  <Button
-    variant="secondary"
-    size="md"
-    onClick={() => setStep(1)}
-    fullWidth
-    className="!h-11 !px-6 !rounded-xl leading-none"
-  >
-    {t("common.back") || "Voltar"}
-  </Button>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setStep(1)}
+                  fullWidth
+                  className="!h-11 !px-6 !rounded-xl leading-none"
+                >
+                  Back
+                </Button>
 
-  <Button
-    type="submit"
-    size="md"
-    disabled={submitting}
-    fullWidth
-    className="!h-11 !px-6 !rounded-xl leading-none"
-    aria-busy={submitting}
-  >
-    {submitting
-      ? t("common.saving") || "A guardar..."
-      : t("auth.createAccount") || "Criar Conta"}
-  </Button>
-</div>
+                <Button
+                  type="submit"
+                  size="md"
+                  disabled={submitting}
+                  fullWidth
+                  className="!h-11 !px-6 !rounded-xl leading-none"
+                  aria-busy={submitting}
+                >
+                  {submitting ? "Saving…" : "Create Account!"}
+                </Button>
+              </div>
             )}
           </div>
 
           <div className="text-center pt-2">
-            <Link to="/Login" className="text-sm hover:underline" style={{ color: theme.colors.primary.main }}>
-              {t("auth.alreadyAccount") || "Já tens conta? Entrar"}
+            <Link
+              to="/Login"
+              className="text-sm hover:underline"
+              style={{ color: theme.colors.primary.main }}
+            >
+              Already have an account? Sign in
             </Link>
           </div>
         </form>

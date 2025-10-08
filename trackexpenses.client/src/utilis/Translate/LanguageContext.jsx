@@ -8,6 +8,7 @@ const translations = {
       name: "TRACKEXPENSES",
     },
     common: {
+      hideFilters: "Filters",
       admin_dashboard: "Dashboard",
       filters: "filters",
       group_dashboard: "Dashboard",

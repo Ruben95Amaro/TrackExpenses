@@ -11,16 +11,14 @@ import Title from "../../components/Titles/TitlePage";
 import Button from "../../components/Buttons/Button";
 
 /* helpers */
-const normPath = (p) =>
-  (p || "").toString().replace(/\\/g, "/").replace(/^\/+/, "");
+const normPath = (p) => (p || "").toString().replace(/\\/g, "/").replace(/^\/+/, "");
 const stripTrailing = (s) => (s || "").replace(/\/+$/g, "");
 const buildFileUrl = (filesBase, partialOrAbsolute) => {
   if (!partialOrAbsolute) return null;
   const p = String(partialOrAbsolute);
-  if (/^https?:\/\//i.test(p))
-    return `${p}${p.includes("?") ? "" : `?t=${Date.now()}`}`;
+  if (/^https?:\/\//i.test(p)) return p; // sem timestamp aqui; o TopBar faz cache-busting
   const root = stripTrailing(filesBase || "");
-  return `${root}/${normPath(p)}?t=${Date.now()}`;
+  return `${root}/${normPath(p)}`;
 };
 
 function ProfilePage() {
@@ -46,9 +44,9 @@ function ProfilePage() {
   const currentImageUrl = useMemo(() => {
     if (imagePreview) return imagePreview;
     if (user?.profileImage) return buildFileUrl(FILES_BASE, user.profileImage);
-    if (auth?.path) return auth.path;
+    if (auth?.path || auth?.Path) return auth.path || auth.Path;
     return null;
-  }, [imagePreview, user?.profileImage, auth?.path, FILES_BASE]);
+  }, [imagePreview, user?.profileImage, auth?.path, auth?.Path, FILES_BASE]);
 
   const displayName = useMemo(() => {
     const fn = (user?.firstName || "").trim();
@@ -150,7 +148,7 @@ function ProfilePage() {
       }
     }
 
-    const email = auth?.Email;
+    const email = auth?.Email || auth?.email;
     if (!email) {
       const empty = {
         email: "",
@@ -174,7 +172,7 @@ function ProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [auth?.Email, setAuth, FILES_BASE]);
+  }, [auth?.Email, auth?.email, setAuth, FILES_BASE]);
 
   // ------- edição / imagem --------
   const handleFileClick = () => fileInputRef.current?.click();
@@ -269,11 +267,13 @@ function ProfilePage() {
         setImagePreview(null);
 
         const absolute = buildFileUrl(FILES_BASE, imageUrl);
+        // 1) Atualiza contexto (TopBar escuta auth.path/Path)
         setAuth?.((prev) => ({
           ...prev,
           firstName: updatedUser.firstName ?? prev?.firstName,
           path: absolute || prev?.path,
         }));
+        // 2) Dispara evento (TopBar também escuta)
         window.dispatchEvent(
           new CustomEvent("avatar-updated", { detail: { url: absolute } })
         );
@@ -365,7 +365,7 @@ function ProfilePage() {
         className="bg-white rounded-xl shadow-md overflow-hidden mt-6"
         style={{ backgroundColor: theme.colors?.background?.paper }}
       >
-        {/* Banner/Topo como no EditUserProfile */}
+        {/* Banner/Topo */}
         <div
           className="px-6 py-8 border-b"
           style={{ borderColor: theme.colors.secondary.light }}

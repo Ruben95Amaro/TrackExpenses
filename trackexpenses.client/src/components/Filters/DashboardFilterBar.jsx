@@ -45,12 +45,13 @@ function FancySelect({ value, onChange, options = [], placeholder = "—" }) {
     [options]
   );
   const current = norm.find((o) => o.value === String(value))?.label || "";
+
   return (
     <div className="relative min-w-0">
       <select
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value)}
-        className="appearance-none bg-transparent outline-none w-full truncate pr-6 rounded-xl"
+        className="appearance-none bg-transparent outline-none w-full truncate pr-8 rounded-xl h-10"
         title={current || placeholder}
         style={{
           borderRadius: "0.75rem",
@@ -75,7 +76,11 @@ function FancySelect({ value, onChange, options = [], placeholder = "—" }) {
         ))}
         <option value="">{placeholder}</option>
       </select>
-      <ChevronDown className="w-4 h-4 absolute right-1 top-1/2 -translate-y-1/2 opacity-70 pointer-events-none" />
+
+      <ChevronDown
+        className="w-4 h-4 opacity-70 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+        aria-hidden="true"
+      />
     </div>
   );
 }
@@ -143,26 +148,33 @@ export default function DashboardFilterBar({
 
   return (
     <div className={cx("w-full", className)}>
-      {/* botão de toggle */}
-      {!hideToggle && (
-        <div className="w-full flex justify-start mb-3 relative z-[5]">
-          <button
-            type="button"
-            onClick={() => setOpen((s) => !s)}
-            aria-pressed={open}
-            className={cx(
-              "h-11 px-5 rounded-2xl border shadow-sm transition font-semibold",
-              "text-white tracking-tight",
-              open
-                ? "bg-white/10"
-                : "bg-white/5 hover:bg-white/10 focus:bg-white/10"
-            )}
-            style={{ borderColor: border }}
-          >
-            {toggleLabel}
-          </button>
-        </div>
+{!hideToggle && (
+  <div className="w-full flex justify-start mb-3 relative z-[5]">
+    <button
+      type="button"
+      onClick={() => setOpen((s) => !s)}
+      aria-pressed={open}
+      className={cx(
+        "relative min-w-[240px] h-[52px] rounded-2xl ring-1 px-4",
+        "flex items-center justify-between text-white font-semibold tracking-tight transition"
       )}
+      style={{ background: bg, borderColor: border }}
+    >
+      <span className="truncate text-[0.95rem] leading-none flex-1 text-left">
+        {toggleLabel || "Filters"}
+      </span>
+
+      <ChevronDown
+        className={cx(
+          "w-4 h-4 opacity-80 pointer-events-none transition-transform duration-200 ml-2",
+          "relative top-[1px]", 
+          open ? "rotate-180" : ""
+        )}
+      />
+    </button>
+  </div>
+)}
+
 
       <div
         className={cx(

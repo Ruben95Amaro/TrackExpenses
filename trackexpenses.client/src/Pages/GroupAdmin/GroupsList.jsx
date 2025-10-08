@@ -11,15 +11,19 @@ import AuthContext from "../../services/Authentication/AuthContext";
 
 /** Badge simples */
 function Badge({ children, tone = "info" }) {
-  const map = {
-    ok:   { bg: "rgba(16,185,129,0.15)", fg: "#10B981" },
-    err:  { bg: "rgba(239,68,68,0.15)", fg: "#EF4444" },
-    info: { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" },
-    warn: { bg: "rgba(245,158,11,0.15)", fg: "#F59E0B" },
-  }[tone] || { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" };
+  const map =
+    {
+      ok: { bg: "rgba(16,185,129,0.15)", fg: "#10B981" },
+      err: { bg: "rgba(239,68,68,0.15)", fg: "#EF4444" },
+      info: { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" },
+      warn: { bg: "rgba(245,158,11,0.15)", fg: "#F59E0B" },
+    }[tone] || { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" };
 
   return (
-    <span className="inline-block px-2 py-1 rounded-full text-xs" style={{ background: map.bg, color: map.fg, whiteSpace: "nowrap" }}>
+    <span
+      className="inline-block px-2 py-1 rounded-full text-xs"
+      style={{ background: map.bg, color: map.fg, whiteSpace: "nowrap" }}
+    >
       {children}
     </span>
   );
@@ -37,13 +41,16 @@ export default function ListGroups() {
 
   const [flt, setFlt] = useState({ q: "", scope: "all" });
 
-  const unwrap = (v) => (Array.isArray(v) ? v : (v?.$values ?? []));
+  const unwrap = (v) => (Array.isArray(v) ? v : v?.$values ?? []);
   const getAdmin = (g) => g?.admin ?? g?.Admin ?? null;
   const getMembers = (g) => unwrap(g?.members ?? g?.Members);
 
   const rolesArr = useMemo(() => {
-    const raw = (auth?.Roles ?? auth?.Role ?? auth?.roles ?? auth?.role) ?? [];
-    return (Array.isArray(raw) ? raw : [raw]).map((x) => String(x || "").toUpperCase());
+    const raw =
+      (auth?.Roles ?? auth?.Role ?? auth?.roles ?? auth?.role) ?? [];
+    return (Array.isArray(raw) ? raw : [raw]).map((x) =>
+      String(x || "").toUpperCase()
+    );
   }, [auth]);
   const isGroupAdmin = rolesArr.includes("GROUPADMINISTRATOR");
 
@@ -60,16 +67,20 @@ export default function ListGroups() {
         });
         if (res?.status >= 200 && res?.status < 300) {
           const raw = res?.data;
-          const list = Array.isArray(raw) ? raw : (raw?.$values ?? []);
+          const list = Array.isArray(raw) ? raw : raw?.$values ?? [];
           if (alive) setGroups(list);
-        } else if (alive) setErrorSubmit(res?.data?.message || "Could not load groups.");
+        } else if (alive) {
+          setErrorSubmit(res?.data?.message || "Could not load groups.");
+        }
       } catch {
         if (alive) setErrorSubmit("Could not load groups.");
       } finally {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; };
+    return () => {
+      alive = false;
+    };
   }, [auth?.Email]);
 
   const scopeOptions = useMemo(
@@ -87,7 +98,11 @@ export default function ListGroups() {
     return (groups || []).filter((g) => {
       const name = (g?.name ?? g?.Name ?? "").toLowerCase();
       const admin = getAdmin(g);
-      const adminText = `${admin?.fullName ?? admin?.FullName ?? ""} ${admin?.email ?? admin?.Email ?? ""}`.toLowerCase();
+      const adminText = `${admin?.fullName ?? admin?.FullName ?? ""} ${
+        admin?.email ?? admin?.Email ?? ""
+      }`
+        .trim()
+        .toLowerCase();
       const membersCount = getMembers(g).length;
       const matchesText = !q || name.includes(q) || adminText.includes(q);
       const matchesScope =
@@ -101,15 +116,18 @@ export default function ListGroups() {
   const doEdit = (g) => {
     const id = g?.id ?? g?.Id;
     if (!id) return;
-    // ✅ pedido: /Groups/Edit/:id
     navigate(`/Groups/Edit/${id}`);
   };
 
   const columns = [
-    { key: "name", headerKey: "name", accessor: (g) => g?.name ?? g?.Name ?? "-" },
+    {
+      key: "name",
+      headerKey: "name",
+      accessor: (g) => g?.name ?? g?.Name ?? "-",
+    },
     {
       key: "admin",
-      headerKey: "groups.admin", // evita 'common.common...'
+      headerKey: "groups.admin",
       accessor: (g) => {
         const a = getAdmin(g);
         const name = a?.fullName ?? a?.FullName ?? "";
@@ -138,24 +156,35 @@ export default function ListGroups() {
     <div className="space-y-6 min-h-screen">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title text={t?.("groups.list") || "Groups"} />
-        <Button variant="primary" size="md" fullWidth={false} onClick={() => navigate("/CreateGroup")} className="shrink-0">
+        <Button
+          variant="primary"
+          size="md"
+          fullWidth={false}
+          onClick={() => navigate("/CreateGroup")}
+          className="shrink-0"
+        >
           {t?.("groups.new") || "New group"}
         </Button>
       </div>
 
+      {/* GenericFilter no layout padrão (toggle fora, pesquisa reativa, só Clear) */}
       <GenericFilter
-        className="
-          mt-2
-          grid items-center gap-3
-          grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto]
-          [&_input]:h-11 [&_select]:h-11 [&_button]:h-11
-        "
+        className="mt-2"
         value={flt}
         onChange={setFlt}
         t={t}
         theme={theme}
+        showToggle
+        defaultOpen
+        showSearch
         searchPlaceholder={t?.("groups.searchPlaceholder") || "Search groups..."}
-        filters={[{ key: "scope", type: "select", options: scopeOptions }]}
+        filters={[
+          {
+            key: "scope",
+            type: "select",
+            options: scopeOptions,
+          },
+        ]}
       />
 
       {/* wrapper igual ao UsersList: corta o bleed do header */}
@@ -175,32 +204,48 @@ export default function ListGroups() {
             headerCellClassName=""
             emptyMessage={t?.("common.noResults") || "No results"}
             edit={{
-              enabled: isGroupAdmin,     // só admin de grupo edita
+              enabled: isGroupAdmin,
               onEdit: doEdit,
             }}
             remove={{
-              enabled: true,             // admin apaga; user normal sai
+              enabled: true,
               confirmMessage: isGroupAdmin
-                ? (t?.("groups.confirm_delete") || "Are you sure you want to delete this group?")
-                : (t?.("groups.confirm_leave") || "Leave this group?"),
+                ? t?.("groups.confirm_delete") ||
+                  "Are you sure you want to delete this group?"
+                : t?.("groups.confirm_leave") || "Leave this group?",
               doDelete: async (g) => {
                 const id = g?.id ?? g?.Id;
                 if (!id) return false;
                 const endpoint = isGroupAdmin ? "/Group/Delete" : "/Group/Leave";
-                const res = await apiCall.delete(endpoint, { params: { id }, validateStatus: () => true });
+                const res = await apiCall.delete(endpoint, {
+                  params: { id },
+                  validateStatus: () => true,
+                });
                 if (res?.status >= 200 && res?.status < 300) {
-                  setGroups((prev) => prev.filter((x) => (x.id ?? x.Id) !== id));
+                  setGroups((prev) =>
+                    prev.filter((x) => (x.id ?? x.Id) !== id)
+                  );
                   return true;
                 }
                 return false;
               },
-              onError: (err) => window.alert(err?.message || (isGroupAdmin ? "Could not delete the group." : "Could not leave the group.")),
+              onError: (err) =>
+                window.alert(
+                  err?.message ||
+                    (isGroupAdmin
+                      ? "Could not delete the group."
+                      : "Could not leave the group.")
+                ),
             }}
           />
         </div>
       </div>
 
-      {errorSubmit && <div className="text-sm text-red-600" role="alert">{errorSubmit}</div>}
+      {errorSubmit && (
+        <div className="text-sm text-red-600" role="alert">
+          {errorSubmit}
+        </div>
+      )}
     </div>
   );
 }

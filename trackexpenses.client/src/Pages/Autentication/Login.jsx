@@ -1,7 +1,6 @@
 import { useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import { Lock, Mail } from "lucide-react";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
@@ -17,7 +16,6 @@ import Button from "../../components/Buttons/Button";
 const Login = () => {
   const { setAuth, setIsAuthenticated, setRoles } = useContext(AuthContext);
   const { theme } = useTheme();
-  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [submitting, setSubmitting] = useState(false);
@@ -40,9 +38,7 @@ const Login = () => {
 
       if (!(response?.status >= 200 && response?.status < 300)) {
         setSubmitting(false);
-        return setErrorSubmit(
-          response?.data?.message || "Unable to login"
-        );
+        return setErrorSubmit(response?.data?.message || "Unable to login");
       }
 
       const data = response.data || {};
@@ -57,7 +53,7 @@ const Login = () => {
 
       window.dispatchEvent(new Event("token-refreshed"));
     } catch (err) {
-      setErrorSubmit("Não foi possível iniciar sessão.");
+      setErrorSubmit("Unable to login. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -66,20 +62,19 @@ const Login = () => {
   return (
     <div className="flex items-center justify-center px-4 sm:px-6 lg:px-8">
       <Card className="max-w-md w-full p-8 rounded-2xl shadow-2xl">
-        {/* Título + Subtítulo */}
+        {/* Title + Subtitle */}
         <div className="text-center mb-8">
           <h2
             className="text-3xl font-bold mb-2"
             style={{ color: theme?.colors?.text?.primary }}
           >
-            {t("auth.loginTitle") || "Login"}
+            LOGIN
           </h2>
           <p
             className="text-sm"
             style={{ color: theme?.colors?.text?.secondary }}
           >
-            {t("auth.loginSubtitle") ||
-              "Enter your credentials to access your account"}
+            Enter your credentials to access your account
           </p>
         </div>
 
@@ -98,7 +93,7 @@ const Login = () => {
 
           {/* Password */}
           <Input
-            label={t("common.password") || "Password"}
+            label="Password"
             type="password"
             value={formData.password}
             placeholder="Enter your password"
@@ -115,26 +110,24 @@ const Login = () => {
               className="text-sm font-medium hover:underline transition-colors duration-200"
               style={{ color: theme?.colors?.primary?.main }}
             >
-              {t("common.forgotPassword") || "Forgot Password?"}
+              Forgot Password?
             </Link>
           </div>
 
-          {/* Botão Login */}
-<Button
-  type="submit"
-  size="md"
-  variant="primary"
-  fullWidth
-  disabled={submitting}
-  className="mt-4 !h-11 !px-6 !rounded-xl leading-none"
-  aria-busy={submitting}
->
-  {submitting
-    ? t("common.signingIn") || "A entrar..."
-    : t("common.login") || "Login"}
-</Button>
+          {/* Login button */}
+          <Button
+            type="submit"
+            size="md"
+            variant="primary"
+            fullWidth
+            disabled={submitting}
+            className="mt-4 !h-11 !px-6 !rounded-xl leading-none"
+            aria-busy={submitting}
+          >
+            {submitting ? "Signing in..." : "Login"}
+          </Button>
 
-          {/* Erros */}
+          {/* Error message */}
           {errorSubmit && (
             <p
               className="text-center text-sm mt-2"
@@ -145,14 +138,14 @@ const Login = () => {
           )}
         </form>
 
-        {/* Link para Register */}
+        {/* Register link */}
         <div className="mt-8 text-center">
           <Link
             to="/Register"
             className="text-sm font-medium hover:underline transition-colors duration-200"
             style={{ color: theme?.colors?.primary?.main }}
           >
-            {t("common.noAccount") || "Don't have an account? Sign Up"}
+            Don't have an account? Sign Up
           </Link>
         </div>
       </Card>
