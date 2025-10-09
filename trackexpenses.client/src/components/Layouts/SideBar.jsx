@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Settings, LogOut, DollarSign } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Settings,
+  LogOut,
+  DollarSign,
+} from "lucide-react";
 import { useTheme } from "../../styles/Theme/Theme";
 import useLogout from "../../services/Authentication/Logout";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
@@ -17,9 +23,9 @@ export default function SideBar({
   const { t } = useLanguage();
   const loc = useLocation();
   const logout = useLogout();
-  const { auth, roles } = useContext(AuthContext); // roles vem do contexto
+  const { auth, roles } = useContext(AuthContext);
 
-  // ---------- perfil ----------
+  /* ========== PERFIL ========== */
   const [profile, setProfile] = useState({
     firstName: user?.firstName || "",
     lastName: user?.lastName || "",
@@ -77,7 +83,7 @@ export default function SideBar({
     return () => controller.abort();
   }, [auth?.Email]);
 
-  // ---------- tema ----------
+  /* ========== TEMA ========== */
   const colors =
     theme?.colors?.menu ?? {
       bg: "#0F172A",
@@ -90,82 +96,103 @@ export default function SideBar({
     };
 
   const tr = (s) => {
-    try { return s && s.includes(".") ? t(s) : s; } catch { return s; }
+    try {
+      return s && s.includes(".") ? t(s) : s;
+    } catch {
+      return s;
+    }
   };
 
-  // ---------- roles & agrupamento (SEM normalize) ----------
+  /* ========== ROLES ========== */
   const userRoles = useMemo(
-  () => (Array.isArray(roles) ? roles : typeof roles === "string" ? roles.split(/[,\s]+/) : []),
-  [roles]
-);
-const canSee = (item) => {
-  if (!item || item.visible === false) return false;
-  if (item.requiresPremium && !premiumOk) return false;
-
-  // sem role ou role "USER" -> todos
-  if (!item.role || item.role === "USER") return true;
-
-  // senão tem de ter esse role
-  return userRoles.includes(item.role);
-};
-const premiumOk =
-  userRoles.includes("PREMIUM") ||
-  !!(auth?.isPremium ?? auth?.IsPremium ?? auth?.premium ?? auth?.Premium) ||
-  ["PREMIUM", "PRO", "PLUS"].includes(
-    String(auth?.subscription?.plan ?? auth?.Subscription?.Plan ?? auth?.plan ?? auth?.Plan ?? "")
-      .trim()
-      .toUpperCase()
+    () =>
+      Array.isArray(roles)
+        ? roles
+        : typeof roles === "string"
+        ? roles.split(/[,\s]+/)
+        : [],
+    [roles]
   );
 
-  const hasAnyRole = (need) => {
-    const list = Array.isArray(need) ? need : [need];
-    if (!list.length || list.includes("USER")) return true; // USER sempre visível
-    return list.some((r) => userRoles.includes(r));
+  const premiumOk =
+    userRoles.includes("PREMIUM") ||
+    !!(
+      auth?.isPremium ??
+      auth?.IsPremium ??
+      auth?.premium ??
+      auth?.Premium
+    ) ||
+    ["PREMIUM", "PRO", "PLUS"].includes(
+      String(
+        auth?.subscription?.plan ??
+          auth?.Subscription?.Plan ??
+          auth?.plan ??
+          auth?.Plan ??
+          ""
+      )
+        .trim()
+        .toUpperCase()
+    );
+
+  const canSee = (item) => {
+    if (!item || item.visible === false) return false;
+    if (item.requiresPremium && !premiumOk) return false;
+    if (!item.role || item.role === "USER") return true;
+    return userRoles.includes(item.role);
   };
 
-const sectionOfRole = (role) => {
-  const r = Array.isArray(role) ? role[0] : role;
-  switch (r) {
-    case "ADMINISTRATOR": return tr("common.admin") || "Admin";
-    case "GROUPADMINISTRATOR": return tr("common.adminGroup") || "Group Admin";
-    case "PREMIUM": return tr("common.premium") || "Premium";
-    case "GROUPMEMBER": return tr("common.groupMember") || "Group";
-    case "USER":
-    default: return tr("common.user") || "Users";
-  }
-};
-
-  // Agrupa: se vier i.section usamos esse título; senão agrupa  por role
-const sections = useMemo(() => {
-  const buckets = new Map();
-  const push = (title, item) => {
-    const key = typeof title === "string" && title.includes(".") ? tr(title) : title;
-    const secTitle = key || (tr("common.user") || "Users");
-    if (!buckets.has(secTitle)) buckets.set(secTitle, []);
-    buckets.get(secTitle).push(item);
-  };
-
-  (items || []).forEach((i) => {
-    if (!canSee(i)) return;
-
-    if (i.section) {
-      // ex.: section: "Groups" ou "common.groups"
-      push(i.section, i);
-      return;
+  const sectionOfRole = (role) => {
+    const r = Array.isArray(role) ? role[0] : role;
+    switch (r) {
+      case "ADMINISTRATOR":
+        return tr("common.admin") || "Admin";
+      case "GROUPADMINISTRATOR":
+        return tr("common.adminGroup") || "Group Admin";
+      case "PREMIUM":
+        return tr("common.premium") || "Premium";
+      case "GROUPMEMBER":
+        return tr("common.groupMember") || "Group";
+      case "USER":
+      default:
+        return tr("common.user") || "Users";
     }
+  };
 
-    const secTitle = sectionOfRole(i.role);
-    push(secTitle, i);
-  });
+  /* ========== AGRUPAMENTO DE SEÇÕES ========== */
+  const sections = useMemo(() => {
+    const buckets = new Map();
+    const push = (title, item) => {
+      const key =
+        typeof title === "string" && title.includes(".") ? tr(title) : title;
+      const secTitle = key || (tr("common.user") || "Users");
+      if (!buckets.has(secTitle)) buckets.set(secTitle, []);
+      buckets.get(secTitle).push(item);
+    };
 
-  return Array.from(buckets.entries()).map(([title, list]) => ({ title, list }));
-}, [items, userRoles, premiumOk, t]);
+    (items || []).forEach((i) => {
+      if (!canSee(i)) return;
+      if (i.section) {
+        push(i.section, i);
+        return;
+      }
+      const secTitle = sectionOfRole(i.role);
+      push(secTitle, i);
+    });
 
-  // ---------- UI ----------
+    return Array.from(buckets.entries()).map(([title, list]) => ({
+      title,
+      list,
+    }));
+  }, [items, userRoles, premiumOk, t]);
+
+  /* ========== COMPONENTE DE SEÇÃO ========== */
   const Section = ({ title, list, first = false }) => {
     if (!list?.length) return null;
     return (
-      <div className={first ? "" : "mt-3 pt-2 border-t"} style={{ borderColor: colors.border }}>
+      <div
+        className={first ? "" : "mt-3 pt-2 border-t"}
+        style={{ borderColor: colors.border }}
+      >
         {!collapsed && (
           <div
             className="px-4 pb-2 text-base font-bold uppercase tracking-wide text-center"
@@ -176,7 +203,9 @@ const sections = useMemo(() => {
         )}
 
         {list.map(({ to, icon: Icon, label, onClick }) => {
-          const active = to ? loc.pathname.toLowerCase().startsWith(to.toLowerCase()) : false;
+          const active = to
+            ? loc.pathname.toLowerCase().startsWith(to.toLowerCase())
+            : false;
           const content = (
             <div
               className="relative mx-2 mb-1 flex items-center gap-3 px-3 py-2 rounded transition-colors"
@@ -189,23 +218,38 @@ const sections = useMemo(() => {
               {active && (
                 <span
                   className="absolute left-0 top-0 bottom-0 my-1 rounded-r"
-                  style={{ width: 4, background: theme?.colors?.primary?.main || "#60A5FA" }}
+                  style={{
+                    width: 4,
+                    background: theme?.colors?.primary?.main || "#60A5FA",
+                  }}
                 />
               )}
               {Icon && (
                 <Icon
                   className="h-5 w-5 shrink-0"
-                  style={{ color: active ? colors.activeText : colors.muted }}
+                  style={{
+                    color: active ? colors.activeText : colors.muted,
+                  }}
                 />
               )}
-              {!collapsed && <span className="text-sm truncate">{tr(label)}</span>}
+              {!collapsed && (
+                <span className="text-sm truncate">{tr(label)}</span>
+              )}
             </div>
           );
 
           return to ? (
-            <Link key={to} to={to}>{content}</Link>
+            <Link key={to} to={to}>
+              {content}
+            </Link>
           ) : (
-            <button key={label} type="button" className="w-full text-left" onClick={onClick} style={{ color: colors.text }}>
+            <button
+              key={label}
+              type="button"
+              className="w-full text-left"
+              onClick={onClick}
+              style={{ color: colors.text }}
+            >
               {content}
             </button>
           );
@@ -214,9 +258,11 @@ const sections = useMemo(() => {
     );
   };
 
+  /* ========== UI PRINCIPAL ========== */
   const avatarUrl = auth?.path || profile.avatarUrl;
   const initials = useMemo(
-    () => ((profile?.firstName?.[0] || "U") + (profile?.lastName?.[0] || "")).toUpperCase(),
+    () =>
+      ((profile?.firstName?.[0] || "U") + (profile?.lastName?.[0] || "")).toUpperCase(),
     [profile]
   );
 
@@ -228,7 +274,10 @@ const sections = useMemo(() => {
       style={{ backgroundColor: colors.bg, color: colors.text }}
     >
       {/* topo / toggle */}
-      <div className="flex items-center justify-end h-12 px-2 border-b" style={{ borderColor: colors.border }}>
+      <div
+        className="flex items-center justify-end h-12 px-2 border-b"
+        style={{ borderColor: colors.border }}
+      >
         <button
           onClick={onToggle}
           className="p-2 rounded-md"
@@ -236,11 +285,15 @@ const sections = useMemo(() => {
           title={collapsed ? "Expand" : "Collapse"}
           aria-label="toggle sidebar"
         >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
         </button>
       </div>
 
-      {/* navegação por secções */}
+      {/* navegação */}
       <nav className="flex-1 overflow-y-auto py-2">
         {sections.map((s, idx) => (
           <Section key={s.title} title={s.title} list={s.list} first={idx === 0} />
@@ -297,7 +350,11 @@ const sections = useMemo(() => {
         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.hoverBg)}
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
       >
-        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-start"} gap-3`}>
+        <div
+          className={`flex items-center ${
+            collapsed ? "justify-center" : "justify-start"
+          } gap-3`}
+        >
           {avatarUrl ? (
             <img
               key={avatarUrl}
@@ -309,7 +366,11 @@ const sections = useMemo(() => {
           ) : (
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center font-semibold shadow ring-1"
-              style={{ ringColor: colors.border, background: "rgba(255,255,255,0.85)", color: "#0B1020" }}
+              style={{
+                ringColor: colors.border,
+                background: "rgba(255,255,255,0.85)",
+                color: "#0B1020",
+              }}
             >
               {initials}
             </div>

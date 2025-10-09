@@ -15,10 +15,14 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: bg }}>
-      <TopBar title={topbarTitle} menuItems={sidebarItems} />
+      {/* TopBar esconde-se sozinho em >= md quando sidebarVisible=true */}
+      <TopBar
+        title={topbarTitle}
+        menuItems={sidebarItems}
+        hideOnDesktop={sidebarVisible}   // 👈 chave
+      />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* só renderiza a sidebar se sidebarVisible for true */}
         {sidebarVisible && (
           <SideBar
             items={sidebarItems}
@@ -28,13 +32,15 @@ export default function AppShell({
         )}
 
         <main
-  className={`flex-1 min-w-0 ${
-    sidebarVisible ? "p-4 md:p-8" : "py-8 px-4"
-  } min-h-[1200px]`}   
->
+          className={`flex-1 min-w-0 ${
+            sidebarVisible ? "p-4 md:p-8" : "py-8 px-4"
+          } min-h-[1200px]`}
+        >
+          {rightSlot}
           {children}
         </main>
       </div>
+
       <Footer />
     </div>
   );
