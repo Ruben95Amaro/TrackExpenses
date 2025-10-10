@@ -81,8 +81,8 @@ namespace TRACKEXPENSES.Server.Models
         [Required] public string WalletId { get; set; } = default!;
         public string? Title { get; set; }
         [Required] public string Category { get; set; } = "Other";
-        [Required] public decimal Amount { get; set; }               // Total OU PerPeriodAmount (conforme SplitMode)
-        public decimal? PerPeriodAmount { get; set; }                // Usado quando SplitMode=PER_PERIOD
+        [Required] public decimal Amount { get; set; }   
+        public decimal? PerPeriodAmount { get; set; }               
         public string Currency { get; set; } = "EUR";
         [Required] public DateTime Date { get; set; } = DateTime.UtcNow.Date;
         public string? Notes { get; set; }
@@ -92,8 +92,6 @@ namespace TRACKEXPENSES.Server.Models
         public string? RepeatUnit { get; set; }
         public int? Occurrences { get; set; }
 
-        // NEW: como calcular instâncias
-        // "SPLIT_TOTAL" (default) | "PER_PERIOD"
         public string? SplitMode { get; set; }
     }
 
@@ -102,8 +100,8 @@ namespace TRACKEXPENSES.Server.Models
         public string? WalletId { get; set; }
         public string? Title { get; set; }
         public string? Category { get; set; }
-        public decimal? Amount { get; set; }               // Total
-        public decimal? PerPeriodAmount { get; set; }      // por período (se usado)
+        public decimal? Amount { get; set; } 
+        public decimal? PerPeriodAmount { get; set; }      
         public string? Currency { get; set; }
         public DateTime? Date { get; set; }
         public string? Notes { get; set; }
@@ -113,7 +111,7 @@ namespace TRACKEXPENSES.Server.Models
         public int? Occurrences { get; set; }
         public bool RemoveImage { get; set; } = false;
 
-        public string? SplitMode { get; set; } // "SPLIT_TOTAL" | "PER_PERIOD"
+        public string? SplitMode { get; set; }
     }
 
     public class UpdateEarningInstanceRequest

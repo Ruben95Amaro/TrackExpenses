@@ -34,7 +34,7 @@ import EditUserProfile from "./Pages/Administrador/EditUser";
 import ListExpenses from "./Pages/Expenses/ListExpenses";
 import CreateExpense from "./Pages/Expenses/CreateExpense";
 import EditExpense from "./Pages/Expenses/EditExpense";
-import CalendarExpenses from "./Pages/Expenses/ExpensesCalendar";
+import FinanceCalendar from "./Pages/Calendar/FinanceCalendar";
 import ListEarnings from "./Pages/Earnings/ListEarnings";
 import CreateEarning from "./Pages/Earnings/CreateEarning";
 import EditEarning from "./Pages/Earnings/EditEarning";
@@ -207,7 +207,7 @@ export default function App() {
       },
       
       {
-        to: "/CalendarExpenses",
+        to: "/Calendar",
         icon: CalendarDays,
         label: "common.calendar",
         role: "USER",
@@ -273,7 +273,7 @@ export default function App() {
             <Route path="/Expenses" element={<ListExpenses />} />
             <Route path="/CreateExpense" element={<CreateExpense />} />
             <Route path="/Expenses/Edit/:id" element={<EditExpense />} />
-            <Route path="/CalendarExpenses" element={<CalendarExpenses />} />
+            <Route path="/Calendar" element={<FinanceCalendar />} />
           </Route>
 
           <Route path="/ListWallets" element={<ListWallets />} />

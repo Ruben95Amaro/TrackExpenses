@@ -10,25 +10,24 @@ namespace TRACKEXPENSES.Server.Models
 
         [Required, MaxLength(120)] public string Name { get; set; }
         public string? Description { get; set; }
-        public decimal Value { get; set; }           // Para one-off ou valor base da recorrência
-        public decimal? PayAmount { get; set; }      // Pode ser usado p/ partial payments
+        public decimal Value { get; set; }           
+        public decimal? PayAmount { get; set; }      
 
         public DateTime StartDate { get; set; }
         public DateTime? EndDate { get; set; }
 
-        public int? RepeatCount { get; set; }        // nº de repetições (opcional)
+        public int? RepeatCount { get; set; }      
         public bool ShouldNotify { get; set; }
-        public string? Periodicity { get; set; }     // manter compat; ver abaixo
+        public string? Periodicity { get; set; }     
         public RecurrenceKind RecurrenceKind { get; set; } = RecurrenceKind.None;
-        public string? RRule { get; set; }           // iCal RRULE se RecurrenceKind == RRule
+        public string? RRule { get; set; }         
 
         public string? Category { get; set; }
         public string? ImageId { get; set; }
 
-        [Required] public string UserId { get; set; }   // manter
-        public string? GroupId { get; set; }            // manter
+        [Required] public string UserId { get; set; } 
+        public string? GroupId { get; set; }            
 
-        // NOVO: ligação à Wallet
         [Required] public string WalletId { get; set; }
         [ForeignKey(nameof(WalletId))] public Wallet Wallet { get; set; }
 
