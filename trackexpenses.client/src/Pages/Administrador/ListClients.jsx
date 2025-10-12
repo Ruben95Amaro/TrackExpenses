@@ -13,8 +13,8 @@ import { Plus } from "lucide-react";
 import Button from "../../components/Buttons/Button";
 
 export default function UsersTable() {
-  const [users, setUsers] = useState([]);                 
-  const [usersWithRoles, setUsersWithRoles] = useState([]); 
+  const [users, setUsers] = useState([]);
+  const [usersWithRoles, setUsersWithRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorSubmit, setErrorSubmit] = useState(null);
 
@@ -23,7 +23,6 @@ export default function UsersTable() {
   const { auth, isAuthenticated, roles } = useContext(AuthContext);
   const { theme } = useTheme();
 
-  // 1) Buscar utilizadores
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -167,6 +166,7 @@ export default function UsersTable() {
 
   return (
     <div className="space-y-6 min-h-screen">
+      {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title text={t?.("common.users") || "Users"} />
         <Button
@@ -197,6 +197,7 @@ export default function UsersTable() {
           {
             key: "group",
             type: "select",
+            label: t?.("common.groups") || "Groups",
             options: groupOptions,
           },
         ]}

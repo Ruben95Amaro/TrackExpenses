@@ -1,3 +1,4 @@
+// src/pages/Groups/ListGroups.jsx
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Title from "../../components/Titles/TitlePage";
@@ -46,8 +47,7 @@ export default function ListGroups() {
   const getMembers = (g) => unwrap(g?.members ?? g?.Members);
 
   const rolesArr = useMemo(() => {
-    const raw =
-      (auth?.Roles ?? auth?.Role ?? auth?.roles ?? auth?.role) ?? [];
+    const raw = (auth?.Roles ?? auth?.Role ?? auth?.roles ?? auth?.role) ?? [];
     return (Array.isArray(raw) ? raw : [raw]).map((x) =>
       String(x || "").toUpperCase()
     );
@@ -167,7 +167,7 @@ export default function ListGroups() {
         </Button>
       </div>
 
-      {/* GenericFilter no layout padrão (toggle fora, pesquisa reativa, só Clear) */}
+      {/* Filtro com labels alinhados (Search + Groups) */}
       <GenericFilter
         className="mt-2"
         value={flt}
@@ -182,12 +182,12 @@ export default function ListGroups() {
           {
             key: "scope",
             type: "select",
+            label: t?.("groups.label") || t?.("common.groups") || "Groups",
             options: scopeOptions,
           },
         ]}
       />
 
-      {/* wrapper igual ao UsersList: corta o bleed do header */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
         <div className="relative overflow-x-auto">
           <GenericTable
@@ -210,9 +210,9 @@ export default function ListGroups() {
             remove={{
               enabled: true,
               confirmMessage: isGroupAdmin
-                ? t?.("groups.confirm_delete") ||
-                  "Are you sure you want to delete this group?"
-                : t?.("groups.confirm_leave") || "Leave this group?",
+                ? (t?.("groups.confirm_delete") ||
+                    "Are you sure you want to delete this group?")
+                : (t?.("groups.confirm_leave") || "Leave this group?"),
               doDelete: async (g) => {
                 const id = g?.id ?? g?.Id;
                 if (!id) return false;

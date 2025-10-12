@@ -1,5 +1,17 @@
+// src/components/Tables/GenericTable.jsx
 import React from "react";
 import PropTypes from "prop-types";
+import { MoreVertical } from "lucide-react";
+
+const safeHeader = (t, i18nPrefix, col) => {
+  if (col.headerLabel) return col.headerLabel;
+  if (col.headerKey && typeof t === "function") {
+    const k = `${i18nPrefix}.${col.headerKey}`;
+    const tr = t(k);
+    if (tr && tr !== k) return tr;
+  }
+  return col.headerKey || col.key;
+};
 
 function IconButton({ title, className, onClick, children }) {
   return (
@@ -7,7 +19,7 @@ function IconButton({ title, className, onClick, children }) {
       type="button"
       title={title}
       onClick={onClick}
-      className={`p-2 rounded hover:opacity-80 transition ${className}`}
+      className={`p-2 rounded-md hover:bg-white/10 transition ${className}`}
     >
       {children}
     </button>
@@ -30,29 +42,19 @@ export default function GenericTable({
   truncateKeys = [],
   minTableWidth = "56rem",
   truncateWidthClass = "max-w-[180px] sm:max-w-[260px]",
-  headClassName,
-  headerCellClassName,
 }) {
-  const rows = Array.isArray(filteredData)
-    ? filteredData
-    : Array.isArray(data)
-    ? data
-    : [];
+  const rows = Array.isArray(filteredData) ? filteredData : Array.isArray(data) ? data : [];
 
-  const hasActions = edit?.enabled || remove?.enabled;
-  const shouldTruncate = (key) =>
-    Array.isArray(truncateKeys) && truncateKeys.includes(key);
+  const hasActions = Boolean(edit?.enabled || remove?.enabled);
+  const shouldTruncate = (key) => Array.isArray(truncateKeys) && truncateKeys.includes(key);
 
   const handleEditClick = (row) => {
     if (edit?.onEdit) return edit.onEdit(row);
-    if (edit?.navigateTo && edit?.navigate)
-      return edit.navigate(edit.navigateTo(row));
+    if (edit?.navigateTo && edit?.navigate) return edit.navigate(edit.navigateTo(row));
   };
-
   const handleDeleteClick = async (row) => {
     const ok = window.confirm(
-      remove?.confirmMessage ||
-        (t ? t("common.confirmDelete") : "Tens a certeza que queres apagar?")
+      remove?.confirmMessage || (t ? t("common.confirmDelete") : "Tens a certeza que queres apagar?")
     );
     if (!ok) return;
     try {
@@ -64,158 +66,153 @@ export default function GenericTable({
     }
   };
 
-  const thClass = headerCellClassName || "px-6 py-3 text-sm font-bold uppercase tracking-wider whitespace-nowrap text-center";
+  // ——— cores iguais ao cartão de cima ———
+  const borderCol = "rgba(255,255,255,0.35)";        // mais branca/visível
+  const paperBg   = theme?.colors?.background?.paper || "rgba(17,24,39,0.8)";
+  const headBg    = "rgba(255,255,255,0.06)";
+  const headText  = theme?.colors?.primary?.light || "#60A5FA";
+  const textCol   = theme?.colors?.text?.primary || "#F8FAFC";
 
   return (
-    <table
-  className="
-    relative w-full table-auto rounded-2xl
-    before:content-[''] before:absolute before:inset-0
-    before:rounded-[inherit] before:border before:border-white/80
-    before:pointer-events-none before:z-50  
-  "
-  style={{
-    minWidth: minTableWidth,
-    borderCollapse: "separate",
-    borderSpacing: 0,
-    backgroundColor: theme?.colors?.background?.paper,
-  }}
->
-      <thead
-        className={`${stickyHeader ? "sticky top-0 z-10" : ""} ${headClassName || ""}`}
-        style={{
-          backgroundColor: headClassName
-            ? undefined
-            : theme?.colors?.background?.paper,
-          // linha branca fina por baixo do cabeçalho
-          boxShadow: "inset 0 -1px 0 rgba(255,255,255,0.6)",
-        }}
-      >
-        <tr>
-          {columns.map((col) => {
-            const header =
-              col.headerLabel ??
-              (col.headerKey
-                ? t
-                  ? t(`${i18nPrefix}.${col.headerKey}`)
-                  : col.headerKey
-                : col.key);
-            return (
-              <th
-                key={col.key}
-                className={thClass}
-                style={{
-                  color: theme?.colors?.primary?.main || "#2563EB",
-                  opacity: 0.95,
-                }}
-                title={typeof header === "string" ? header : undefined}
-              >
-                {header}
-              </th>
-            );
-          })}
-          {hasActions && (
-            <th
-              className={thClass}
-              style={{
-                color: theme?.colors?.primary?.main || "#2563EB",
-                opacity: 0.95,
-              }}
+    <div
+      className="w-full rounded-2xl overflow-hidden"
+      style={{
+        backgroundColor: paperBg,
+        border: `1px solid ${borderCol}`,  // a ÚNICA borda visível
+      }}
+    >
+      <div className="overflow-x-auto">
+        <table
+          className="w-full text-sm table-auto"
+          style={{
+            minWidth: minTableWidth,
+            borderCollapse: "separate",
+            borderSpacing: 0,
+            color: textCol,
+            width: "100%",
+            // sem borda no table para não “cortar” os cantos
+          }}
+        >
+          {/* CABEÇALHO */}
+          <thead
+            className={`${stickyHeader ? "sticky top-0 z-10" : ""} relative`}
+            style={{
+              background: headBg,
+              color: headText,
+              backdropFilter: "blur(8px)",
+              // estes 3 garantem canto perfeito sem “meias-luas”
+              borderTopLeftRadius: 16,
+              borderTopRightRadius: 16,
+              overflow: "hidden",
+              // linha separadora inferior suave
+              boxShadow: "inset 0 -1px 0 rgba(255,255,255,0.35)",
+            }}
+          >
+            <tr>
+              {columns.map((col) => {
+                const header = safeHeader(t, i18nPrefix, col);
+                return (
+                  <th
+                    key={col.key}
+                    className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-center"
+                    // sem border nas células do header
+                  >
+                    {header}
+                  </th>
+                );
+              })}
+              {hasActions && (
+                <th className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-center">
+                  {t ? t("common.actions") : "Ações"}
+                </th>
+              )}
+            </tr>
+
+            {/* botão flutuante (exemplo) */}
+            <button
+              type="button"
+              title="Opções"
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-30 rounded p-1 hover:bg-white/10"
+              onClick={() => {}}
+              aria-label="Opções"
             >
-              {t ? t("common.actions") : "Ações"}
-            </th>
-          )}
-        </tr>
-      </thead>
+              <MoreVertical className="h-5 w-5 text-white/70" />
+            </button>
+          </thead>
 
-      <tbody style={{ backgroundColor: theme?.colors?.background?.paper }}>
-        {loading ? (
-          <tr style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)" }}>
-            <td
-              className="px-6 py-6 text-center"
-              colSpan={columns.length + (hasActions ? 1 : 0)}
-            >
-              {t ? t("common.loading") : "Carregando…"}
-            </td>
-          </tr>
-        ) : rows.length === 0 ? (
-          <tr style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)" }}>
-            <td
-              className="px-6 py-6 text-center"
-              colSpan={columns.length + (hasActions ? 1 : 0)}
-            >
-              {emptyMessage}
-            </td>
-          </tr>
-        ) : (
-          rows.map((row, idx) => {
-            const k = rowKey ? rowKey(row, idx) : idx;
-            return (
-              <tr
-                key={k}
-                // linhas brancas internas entre as linhas
-                style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.6)" }}
-              >
-                {columns.map((col) => {
-                  const raw =
-                    typeof col.accessor === "function"
-                      ? col.accessor(row)
-                      : row?.[col.key] ?? "-";
-                  const value =
-                    typeof col.cell === "function" ? col.cell(raw, row) : raw;
-
-                  const content = value ?? "-";
-                  const isTrunc = shouldTruncate(col.key);
-
-                  return (
-                    <td
-                      key={col.key}
-                      className="px-6 py-4 text-sm align-middle text-center"
-                    >
-                      {isTrunc ? (
-                        <div
-                          className={`truncate ${truncateWidthClass} mx-auto text-center`}
-                          title={String(content)}
-                        >
-                          {content}
-                        </div>
-                      ) : (
-                        <div className="break-words text-center">{content}</div>
-                      )}
-                    </td>
-                  );
-                })}
-
-                {hasActions && (
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex items-center justify-center gap-2">
-                      {edit?.enabled && (
-                        <IconButton
-                          title={t ? t("common.edit") : "Editar"}
-                          className="text-blue-600 hover:text-blue-900"
-                          onClick={() => handleEditClick(row)}
-                        >
-                          ✏️
-                        </IconButton>
-                      )}
-                      {remove?.enabled && (
-                        <IconButton
-                          title={t ? t("common.delete") : "Apagar"}
-                          className="text-red-600 hover:text-red-900"
-                          onClick={() => handleDeleteClick(row)}
-                        >
-                          🗑️
-                        </IconButton>
-                      )}
-                    </div>
-                  </td>
-                )}
+          {/* CORPO */}
+          <tbody>
+            {loading ? (
+              <tr>
+                <td className="px-6 py-6 text-center text-sm opacity-80" colSpan={columns.length + (hasActions ? 1 : 0)}>
+                  {t ? t("common.loading") : "A carregar…"}
+                </td>
               </tr>
-            );
-          })
-        )}
-      </tbody>
-    </table>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td className="px-6 py-6 text-center text-sm opacity-80" colSpan={columns.length + (hasActions ? 1 : 0)}>
+                  {emptyMessage}
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, idx) => {
+                const k = rowKey ? rowKey(row, idx) : idx;
+                const isLastRow = idx === rows.length - 1;
+
+                return (
+                  <tr
+                    key={k}
+                    className="transition-colors hover:bg-white/5"
+                    style={{
+                      // linhas horizontais internas (sem vertical) — não estragam os cantos
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18)",
+                      // fecha a base com a mesma linha do topo
+                      ...(isLastRow ? { borderBottom: `1px solid ${borderCol}` } : null),
+                    }}
+                  >
+                    {columns.map((col) => {
+                      const raw = typeof col.accessor === "function" ? col.accessor(row) : row?.[col.key] ?? "-";
+                      const value = typeof col.cell === "function" ? col.cell(raw, row) : raw;
+                      const content = value ?? "-";
+                      const isTrunc = shouldTruncate(col.key);
+
+                      return (
+                        <td key={col.key} className="px-6 py-4 align-middle text-center">
+                          {isTrunc ? (
+                            <div className={`truncate ${truncateWidthClass} mx-auto`} title={String(content)}>
+                              {content}
+                            </div>
+                          ) : (
+                            <div className="break-words">{content}</div>
+                          )}
+                        </td>
+                      );
+                    })}
+
+                    {hasActions && (
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          {edit?.enabled && (
+                            <IconButton title={t ? t("common.edit") : "Editar"} className="text-blue-400" onClick={() => handleEditClick(row)}>
+                              ✏️
+                            </IconButton>
+                          )}
+                          {remove?.enabled && (
+                            <IconButton title={t ? t("common.delete") : "Apagar"} className="text-red-400" onClick={() => handleDeleteClick(row)}>
+                              🗑️
+                            </IconButton>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -236,24 +233,11 @@ GenericTable.propTypes = {
   i18nPrefix: PropTypes.string,
   loading: PropTypes.bool,
   emptyMessage: PropTypes.string,
-  edit: PropTypes.shape({
-    enabled: PropTypes.bool,
-    onEdit: PropTypes.func,
-    navigateTo: PropTypes.func,
-    navigate: PropTypes.func,
-  }),
-  remove: PropTypes.shape({
-    enabled: PropTypes.bool,
-    confirmMessage: PropTypes.string,
-    doDelete: PropTypes.func,
-    onSuccess: PropTypes.func,
-    onError: PropTypes.func,
-  }),
+  edit: PropTypes.object,
+  remove: PropTypes.object,
   rowKey: PropTypes.func,
   stickyHeader: PropTypes.bool,
   truncateKeys: PropTypes.arrayOf(PropTypes.string),
   minTableWidth: PropTypes.string,
   truncateWidthClass: PropTypes.string,
-  headClassName: PropTypes.string,
-  headerCellClassName: PropTypes.string,
 };

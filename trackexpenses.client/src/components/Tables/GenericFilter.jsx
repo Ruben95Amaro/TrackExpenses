@@ -1,14 +1,158 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
-import { Search, ChevronDown, X } from "lucide-react";
-import Button from "../Buttons/Button";
+import { Search as SearchIcon, ChevronDown, X } from "lucide-react";
 
 const cx = (...xs) => xs.filter(Boolean).join(" ");
+
 const paperBg = (theme) => theme?.colors?.background?.paper || "transparent";
 const ringColor = (theme) =>
   theme?.colors?.secondary?.light || "rgba(148,163,184,0.25)";
 const capsuleBg = (theme) =>
   theme?.colors?.glass?.soft || "rgba(148,163,184,0.08)";
+const textMain = (theme) => theme?.colors?.text?.primary || "#ffffff";
+const textMuted = (theme) =>
+  theme?.colors?.text?.secondary || "rgba(255,255,255,0.85)";
+
+/* ===== cápsulas reutilizáveis ===== */
+function FieldLabel({ children, theme }) {
+  return (
+    <label
+      className="text-xs select-none block mb-1"
+      style={{ color: textMuted(theme) }}
+    >
+      {children}
+    </label>
+  );
+}
+
+function Capsule({ children, theme, className }) {
+  return (
+    <div
+      className={cx(
+        "relative h-[52px] rounded-2xl ring-1 overflow-hidden",
+        className
+      )}
+      style={{ background: capsuleBg(theme), borderColor: ringColor(theme) }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Input de pesquisa em cápsula */
+function SearchCapsule({ value, onChange, placeholder, theme }) {
+  const inputRef = useRef(null);
+
+  return (
+    <Capsule theme={theme}>
+      <span
+        className="absolute left-0 top-0 h-full w-[48px] flex items-center justify-center pointer-events-none z-30"
+        style={{ color: textMain(theme) }}
+      >
+        <SearchIcon className="w-4.5 h-4.5" />
+      </span>
+
+      <input
+        ref={inputRef}
+        type="text"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="absolute inset-0 z-20 pl-[56px] pr-10 bg-transparent outline-none text-sm"
+        style={{ color: textMain(theme) }}
+      />
+
+      {value ? (
+        <button
+          type="button"
+          onClick={() => {
+            onChange("");
+            requestAnimationFrame(() => inputRef.current?.focus());
+          }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 z-30 rounded p-1 hover:bg-white/10"
+          aria-label="Clear"
+          title="Clear"
+        >
+          <X className="w-4 h-4" style={{ color: textMain(theme) }} />
+        </button>
+      ) : null}
+    </Capsule>
+  );
+}
+
+/** Select em cápsula */
+function SelectCapsule({
+  value,
+  onChange,
+  options = [],
+  placeholder = "—",
+  theme,
+  rightChevron = true,
+  className = "",
+}) {
+  const norm = useMemo(
+    () =>
+      (options || []).map((o, i) => {
+        const v = o?.value ?? o?.id ?? i.toString();
+        let lbl = o?.label ?? o?.name ?? o?.email ?? "";
+        if (o?.isPrimary) lbl = `${lbl} (Primary)`;
+        return { val: String(v), label: String(lbl) };
+      }),
+    [options]
+  );
+
+  const current =
+    norm.find((o) => o.val === String(value))?.label || placeholder;
+
+  return (
+    <Capsule theme={theme} className={className}>
+      <div className="absolute inset-0 flex items-center pl-[16px] pr-8 pointer-events-none z-30">
+        <span
+          className="text-sm truncate w-full"
+          style={{ color: textMain(theme) }}
+          title={current}
+        >
+          {current}
+        </span>
+      </div>
+
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange?.(e.target.value)}
+        className="absolute inset-0 z-10 w-full h-full bg-transparent appearance-none outline-none cursor-pointer"
+        style={{
+          color: "transparent",
+          WebkitTextFillColor: "transparent",
+          border: "none",
+          paddingLeft: "14px",
+          paddingRight: "28px",
+        }}
+        title={current}
+      >
+        {norm.map((o) => (
+          <option
+            key={o.val}
+            value={o.val}
+            style={{ backgroundColor: "rgba(15,23,42,0.95)", color: "#f8fafc" }}
+          >
+            {o.label}
+          </option>
+        ))}
+        {!norm.some((o) => o.val === String(value)) && (
+          <option value="">{placeholder}</option>
+        )}
+      </select>
+
+      {rightChevron && (
+        <ChevronDown
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 opacity-70 pointer-events-none z-30"
+          style={{ color: textMain(theme) }}
+        />
+      )}
+    </Capsule>
+  );
+}
+
 
 export default function GenericFilter({
   value = { q: "" },
@@ -17,7 +161,7 @@ export default function GenericFilter({
   filters = [],
   t,
   theme,
-  searchPlaceholder = "Pesquisar...",
+  searchPlaceholder = "Type to search...",
   className = "",
   rightActions = null,
   showToggle = true,
@@ -28,16 +172,16 @@ export default function GenericFilter({
   const [open, setOpen] = useState(!!defaultOpen);
   const btnRef = useRef(null);
 
-  const handleSearch = (e) => onChange({ ...safeValue, q: e.target.value });
+  const setField = (key, val) => onChange({ ...safeValue, [key]: val });
 
   const handleSelect = (key, nextVal, multiple = false) => {
-    if (!multiple) return onChange({ ...safeValue, [key]: nextVal });
+    if (!multiple) return setField(key, nextVal);
     const prev = Array.isArray(safeValue[key]) ? safeValue[key] : [];
     const exists = prev.includes(nextVal);
     const nextArr = exists
       ? prev.filter((v) => v !== nextVal)
       : [...prev, nextVal];
-    onChange({ ...safeValue, [key]: nextArr });
+    setField(key, nextArr);
   };
 
   const clearAll = () => {
@@ -47,71 +191,44 @@ export default function GenericFilter({
     });
     onChange(cleared);
   };
-  const doClear = () => (typeof onClear === "function" ? onClear() : clearAll());
+  const doClear = () =>
+    typeof onClear === "function" ? onClear() : clearAll();
 
-  const activeCount = useMemo(() => {
-    let n = 0;
-    if (showSearch && safeValue.q?.trim()) n++;
-    (filters || []).forEach((f) => {
-      const v = safeValue[f.key];
-      if (f.multiple) n += Array.isArray(v) ? v.length : 0;
-      else if (v && v !== "all") n++;
-    });
-    return n;
-  }, [safeValue, filters, showSearch]);
+  const fieldWrap = "flex flex-col gap-1 min-w-[260px] grow basis-[280px]";
 
-  const Field = ({ children }) => (
-    <div
-      className="flex items-center min-w-0 rounded-2xl ring-1 px-3 h-[52px]"
-      style={{ background: capsuleBg(theme), borderColor: ringColor(theme) }}
-    >
-      <div className="min-w-0 flex-1">{children}</div>
-    </div>
-  );
-
-  const SearchBox = (
-    <Field>
-      <div className="relative w-full">
-        <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center">
-          <Search className="h-4.5 w-4.5 opacity-70" />
-        </span>
-        <input
-          type="text"
-          value={safeValue.q ?? ""}
-          onChange={handleSearch}
-          placeholder={searchPlaceholder}
-          className="w-full h-[44px] pl-8 pr-8 bg-transparent outline-none rounded-xl"
-          aria-label={t ? t("common.search") : "Pesquisar"}
-        />
-        {!!safeValue.q && (
-          <button
-            type="button"
-            onClick={() => onChange({ ...safeValue, q: "" })}
-            className="absolute inset-y-0 right-1.5 flex items-center rounded p-1 hover:bg-white/10"
-            aria-label={t ? t("common.clear") : "Limpar"}
-            title={t ? t("common.clear") : "Limpar"}
-          >
-            <X className="h-4 w-4 opacity-80" />
-          </button>
-        )}
-      </div>
-    </Field>
-  );
-
-  const SelectField = (f) => {
+  const renderField = (f) => {
     const isMultiple = !!f.multiple;
     const current = safeValue[f.key];
+
+    const wrapCls =
+      f.fullWidth === false
+        ? "flex flex-col gap-1 shrink-0 w-auto"
+        : fieldWrap;
+
+    if (f.type === "custom" && typeof f.render === "function") {
+      return (
+        <div key={f.key} className={wrapCls}>
+          {f.label && <FieldLabel theme={theme}>{f.label}</FieldLabel>}
+          <Capsule theme={theme} className="px-2">
+            <div className={cx(f.fullWidth === false ? "w-auto" : "w-full")}>
+              {f.render(current, (nv) => setField(f.key, nv))}
+            </div>
+          </Capsule>
+        </div>
+      );
+    }
 
     if (isMultiple) {
       const arr = Array.isArray(current) ? current : [];
       return (
-        <div key={f.key} className="w-full">
-          {f.label && (
-            <div className="text-xs mb-1 opacity-70 select-none">{f.label}</div>
-          )}
+        <div key={f.key} className={wrapCls}>
+          {f.label && <FieldLabel theme={theme}>{f.label}</FieldLabel>}
           <div
-            className="rounded-2xl border p-2 max-h-40 overflow-auto space-y-1"
-            style={{ borderColor: ringColor(theme), background: capsuleBg(theme) }}
+            className="rounded-2xl ring-1 p-2 max-h-44 overflow-auto space-y-1"
+            style={{
+              borderColor: ringColor(theme),
+              background: capsuleBg(theme),
+            }}
           >
             {(f.options || []).map((opt) => {
               const checked = arr.includes(opt.value);
@@ -119,6 +236,7 @@ export default function GenericFilter({
                 <label
                   key={opt.value}
                   className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/5"
+                  title={opt.label}
                 >
                   <input
                     type="checkbox"
@@ -126,7 +244,9 @@ export default function GenericFilter({
                     onChange={() => handleSelect(f.key, opt.value, true)}
                     className="accent-indigo-600"
                   />
-                  <span className="text-sm">{opt.label}</span>
+                  <span className="text-sm" style={{ color: textMain(theme) }}>
+                    {opt.label}
+                  </span>
                 </label>
               );
             })}
@@ -136,97 +256,92 @@ export default function GenericFilter({
     }
 
     return (
-      <div key={f.key} className="w-full">
-        {f.label && (
-          <label className="block text-xs mb-1 opacity-70 select-none">
-            {f.label}
-          </label>
-        )}
-        <div
-          className="relative rounded-2xl ring-1 h-[52px] flex items-center"
-          style={{ background: capsuleBg(theme), borderColor: ringColor(theme) }}
-        >
-          <select
-            value={Array.isArray(current) ? current[0] ?? "" : current ?? ""}
-            onChange={(e) => handleSelect(f.key, e.target.value, false)}
-            className="appearance-none bg-transparent outline-none w-full h-[44px] px-3 pr-8 rounded-xl truncate"
-            style={{ borderRadius: "0.75rem" }}
-          >
-            {(f.options || []).map((opt) => (
-              <option
-                key={opt.value}
-                value={opt.value}
-                style={{ backgroundColor: "#0f172a", color: "#f8fafc" }}
-              >
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="w-4 h-4 opacity-70 absolute right-2 pointer-events-none" />
-        </div>
+      <div key={f.key} className={wrapCls}>
+        {f.label && <FieldLabel theme={theme}>{f.label}</FieldLabel>}
+        <SelectCapsule
+          value={Array.isArray(current) ? current[0] ?? "" : current ?? ""}
+          onChange={(v) => handleSelect(f.key, v, false)}
+          options={f.options || []}
+          placeholder={f.placeholder || "—"}
+          theme={theme}
+        />
       </div>
     );
   };
 
   return (
-    <div className={["w-full", className].join(" ")}>
+    <div className={cx("w-full", className)}>
       <div className="w-full flex justify-start mb-3 relative z-[5] flex-wrap gap-2">
         {showToggle && (
-  <button
-    ref={btnRef}
-    type="button"
-    onClick={() => setOpen((s) => !s)}
-    aria-pressed={open}
-    className={cx(
-      "relative flex items-center justify-between w-[220px] h-[52px] rounded-2xl ring-1 px-4 text-sm font-medium text-white transition",
-      open ? "bg-white/10" : "bg-white/5 hover:bg-white/10"
-    )}
-    style={{
-      background: capsuleBg(theme),
-      borderColor: ringColor(theme),
-    }}
-  >
-    <span className="truncate">
-      {open
-        ? t?.("common.hideFilters") || "Filters"
-        : t?.("common.showFilters") || "Filters"}
-    </span>
-
-    <ChevronDown
-      className={`w-4 h-4 ml-2 opacity-70 transition-transform ${
-        open ? "rotate-180" : ""
-      }`}
-    />
-  </button>
-)}
+          <button
+            ref={btnRef}
+            type="button"
+            onClick={() => setOpen((s) => !s)}
+            aria-pressed={open}
+            className={cx(
+              "relative flex items-center justify-between h-[52px] rounded-2xl ring-1 px-4 text-sm font-medium",
+              "min-w-[180px]"
+            )}
+            style={{
+              background: capsuleBg(theme),
+              borderColor: ringColor(theme),
+              color: textMain(theme),
+            }}
+          >
+            <span className="truncate" style={{ color: textMuted(theme) }}>
+              {open
+                ? t?.("common.hideFilters") || "Filters"
+                : t?.("common.showFilters") || "Filters"}
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 ml-2 opacity-70 transition-transform ${
+                open ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        )}
         {rightActions}
       </div>
 
       {open && (
         <div
           role="region"
-          aria-label={t ? t("common.filters") : "Filtros"}
+          aria-label={t ? t("common.filters") : "Filters"}
           className="w-full rounded-3xl ring-1 px-4 py-4"
           style={{
-            backgroundColor: paperBg(theme),
+            background: paperBg(theme),
             borderColor: ringColor(theme),
           }}
         >
           <div
-            className="grid gap-3"
+            className="grid gap-3 items-start"
             style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             }}
           >
-            {showSearch && <div className="col-span-full">{SearchBox}</div>}
-            {(filters || []).map(SelectField)}
+            {showSearch && (
+              <div className={fieldWrap}>
+                <FieldLabel theme={theme}>
+                  {t?.("common.search") || "Search"}
+                </FieldLabel>
+                <SearchCapsule
+                  value={safeValue.q ?? ""}
+                  onChange={(q) => onChange({ ...safeValue, q })}
+                  placeholder={searchPlaceholder}
+                  theme={theme}
+                />
+              </div>
+            )}
+
+            {(filters || []).map((f) => renderField(f))}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               onClick={doClear}
-              className="h-11 px-6 rounded-2xl bg-white/80 text-black/90 font-medium"
+              className="h-11 px-6 rounded-2xl font-medium"
+              style={{ background: "rgba(255,255,255,0.80)", color: "#111827" }}
               title={t ? t("common.clear") : "Clear"}
             >
               {t ? t("common.clear") : "Clear"}
@@ -246,12 +361,15 @@ GenericFilter.propTypes = {
     PropTypes.shape({
       key: PropTypes.string.isRequired,
       label: PropTypes.string,
-      type: PropTypes.oneOf(["select"]).isRequired,
+      type: PropTypes.oneOf(["select", "custom"]).isRequired,
       options: PropTypes.arrayOf(
         PropTypes.shape({ value: PropTypes.string, label: PropTypes.string })
       ),
       multiple: PropTypes.bool,
       defaultValue: PropTypes.string,
+      fullWidth: PropTypes.bool,
+      render: PropTypes.func,
+      placeholder: PropTypes.string,
     })
   ),
   t: PropTypes.func,

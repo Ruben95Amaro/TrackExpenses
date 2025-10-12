@@ -1,66 +1,56 @@
-import React, { useEffect, useMemo, useState, useContext } from "react";
+// src/pages/Groups/GroupDashboard.jsx
+import React, { useEffect, useMemo, useRef, useState, useContext } from "react";
 import Title from "../../components/Titles/TitlePage";
 import StatCard from "../../components/UI/StatCard";
 import EvolutionChart from "../../components/Charts/EvolutionChart";
-import StatusStackedBar from "../../components/Charts/StatusStackedBar";
 import CategoriesPies from "../../components/Charts/CategoriesPies";
+import StatusStackedBar from "../../components/Charts/StatusStackedBar";
+import DashboardFilterBar from "../../components/Filters/DashboardFilterBar";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import { useTheme } from "../../styles/Theme/Theme";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import AuthContext from "../../services/Authentication/AuthContext";
 
-// filtro comum (com toggle interno + dropdowns/pills responsivos)
-import DashboardFilterBar from "../../components/Filters/DashboardFilterBar";
-
-const toISO = (d) => d.toISOString().slice(0, 10);
-const firstDayOfMonth = (d = new Date()) =>
-  new Date(d.getFullYear(), d.getMonth(), 1);
-const lastDayOfMonth = (d = new Date()) =>
-  new Date(d.getFullYear(), d.getMonth() + 1, 0);
-
+/* === helpers === */
+const toISO = (d) => (d ? new Date(d).toISOString().split("T")[0] : "");
+const firstDay = (d = new Date()) => new Date(d.getFullYear(), d.getMonth(), 1);
+const lastDay = (d = new Date()) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
 const A = (x) => (Array.isArray(x) ? x : x?.$values ? x.$values : []);
 const N = (v) => (v == null ? 0 : Number(v));
 const pct = (p, t) => (N(t) > 0 ? N(p) / N(t) : 0);
-
 const fmtCurrency = (v, cur = "EUR") =>
-  new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(
-    N(v)
-  );
+  new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(N(v));
 
+/* === componente principal === */
 export default function GroupDashboard() {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { auth } = useContext(AuthContext) || {};
 
-  // ===== Filtros controlados pelo componente =====
   const [flt, setFlt] = useState({
     groupId: "",
     userId: "",
     walletId: "",
-    from: toISO(firstDayOfMonth()),
-    to: toISO(lastDayOfMonth()),
+    from: toISO(firstDay()),
+    to: toISO(lastDay()),
     granularity: "month",
     type: "both",
   });
 
-  // dados para dropdowns
   const [groups, setGroups] = useState([]);
   const [users, setUsers] = useState([]);
   const [wallets, setWallets] = useState([]);
 
-  // dados de gráficos/KPIs
   const [loading, setLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
   const [summary, setSummary] = useState(null);
   const [series, setSeries] = useState([]);
-  const [statusIncome, setStatusIncome] = useState([]);
-  const [statusExpense, setStatusExpense] = useState([]);
   const [catsIncome, setCatsIncome] = useState([]);
   const [catsExpense, setCatsExpense] = useState([]);
+  const [statusIncome, setStatusIncome] = useState([]);
+  const [statusExpense, setStatusExpense] = useState([]);
   const [currency, setCurrency] = useState("EUR");
   const [error, setError] = useState("");
 
-  // tema
   const c = theme.colors;
   const success = c?.success?.main || "#16a34a";
   const danger = c?.error?.main || "#ef4444";
@@ -70,92 +60,63 @@ export default function GroupDashboard() {
   const showIncome = flt.type === "both" || flt.type === "income";
   const showExpense = flt.type === "both" || flt.type === "expense";
 
-  /* ================== Fetch de opções ================== */
-  // grupos do utilizador
+  /* --- Fetch grupos --- */
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        const r = await apiCall.get("Group/ListMine", {
-          validateStatus: () => true,
-        });
+        const r = await apiCall.get("Group/ListMine", { validateStatus: () => true });
         const list = r?.status >= 200 && r?.status < 300 ? A(r.data) : [];
         if (!alive) return;
         setGroups(list);
-        if (list[0]) {
-          setFlt((prev) => ({ ...prev, groupId: list[0].id }));
-        }
-      } catch {
-        /* ignore */
-      }
+        if (list[0]) setFlt((p) => ({ ...p, groupId: list[0].id }));
+      } catch {/* ignore */}
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [auth?.Email]);
 
-  // membros quando muda o grupo
+  /* --- Fetch users por grupo --- */
   useEffect(() => {
     let alive = true;
-    if (!flt.groupId) {
-      setUsers([]);
-      setFlt((p) => ({ ...p, userId: "", walletId: "" }));
-      return;
-    }
+    if (!flt.groupId) { setUsers([]); return; }
     (async () => {
       try {
-        const r = await apiCall.get("Group/Members", {
-          params: { groupId: flt.groupId },
-          validateStatus: () => true,
-        });
-        const list =
-          r?.status >= 200 && r?.status < 300 ? A(r?.data?.members ?? r.data) : [];
+        const r = await apiCall.get("Group/Members", { params: { groupId: flt.groupId }, validateStatus: () => true });
+        const list = r?.status >= 200 && r?.status < 300 ? A(r?.data?.members ?? r.data) : [];
         if (!alive) return;
         setUsers(list);
-        if (list[0]) setFlt((p) => ({ ...p, userId: list[0].id, walletId: "" }));
-      } catch {
-        /* ignore */
-      }
+        if (list[0]) setFlt((p) => ({ ...p, userId: list[0].id }));
+      } catch {/* ignore */}
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [flt.groupId]);
 
-  // wallets quando muda o utilizador
+  /* --- Fetch wallets por user --- */
   useEffect(() => {
     let alive = true;
-    if (!flt.userId) {
-      setWallets([]);
-      setFlt((p) => ({ ...p, walletId: "" }));
-      return;
-    }
+    if (!flt.userId) { setWallets([]); return; }
     (async () => {
       try {
-        const r = await apiCall.get("Group/UserWallets", {
-          params: { userId: flt.userId },
-          validateStatus: () => true,
-        });
+        const r = await apiCall.get("Group/UserWallets", { params: { userId: flt.userId }, validateStatus: () => true });
         const list = r?.status >= 200 && r?.status < 300 ? A(r.data) : [];
         if (!alive) return;
         setWallets(list);
-      } catch {
-        /* ignore */
-      }
+      } catch {/* ignore */}
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [flt.userId]);
 
-  /* ================== Search / Clear ================== */
+  /* --- Fazer a 1ª pesquisa automaticamente --- */
+  const didInitialSearch = useRef(false);
+  useEffect(() => {
+    if (!didInitialSearch.current && flt.groupId && flt.userId) {
+      didInitialSearch.current = true;
+      (async () => { await doSearch(); })();
+    }
+  }, [flt.groupId, flt.userId]);
+
   const buildParams = () => {
-    const p = {
-      from: flt.from,
-      to: flt.to,
-      granularity: flt.granularity,
-      groupId: flt.groupId,
-    };
+    const p = { from: flt.from, to: flt.to, granularity: flt.granularity, groupId: flt.groupId };
     if (flt.userId) p.userId = flt.userId;
     if (flt.walletId) p.walletId = flt.walletId;
     return p;
@@ -166,55 +127,26 @@ export default function GroupDashboard() {
     setLoading(true);
     setError("");
     const params = buildParams();
-
     try {
-      const [sumRes, tsRes, stIncRes, stExpRes, ciRes, ceRes] =
-        await Promise.all([
-          apiCall.get("GroupDashboard/Summary", { params }),
-          apiCall.get("GroupDashboard/TimeSeries", { params }),
-          apiCall.get("GroupDashboard/StatusSplit", {
-            params: { ...params, type: "income", groupBy: flt.granularity },
-          }),
-          apiCall.get("GroupDashboard/StatusSplit", {
-            params: { ...params, type: "expense", groupBy: flt.granularity },
-          }),
-          apiCall.get("GroupDashboard/Categories", {
-            params: { ...params, type: "income" },
-          }),
-          apiCall.get("GroupDashboard/Categories", {
-            params: { ...params, type: "expense" },
-          }),
-        ]);
+      const [sumRes, tsRes, ciRes, ceRes, stIncRes, stExpRes] = await Promise.all([
+        apiCall.get("GroupDashboard/Summary", { params }),
+        apiCall.get("GroupDashboard/TimeSeries", { params }),
+        apiCall.get("GroupDashboard/Categories", { params: { ...params, type: "income" } }),
+        apiCall.get("GroupDashboard/Categories", { params: { ...params, type: "expense" } }),
+        apiCall.get("GroupDashboard/StatusSplit", { params: { ...params, type: "income", groupBy: flt.granularity } }),
+        apiCall.get("GroupDashboard/StatusSplit", { params: { ...params, type: "expense", groupBy: flt.granularity } }),
+      ]);
 
       setSummary(sumRes?.data ?? null);
-      setSeries(
-        A(tsRes?.data).map((r) => ({
-          label: r?.label ?? "",
-          income: N(r?.income),
-          expense: N(r?.expense),
-        }))
-      );
+      setSeries(A(tsRes?.data).map((r) => ({ label: r?.label ?? "", income: N(r?.income), expense: N(r?.expense) })));
+      setCatsIncome(A(ciRes?.data).map((x) => ({ category: x?.category ?? "—", amount: N(x?.amount) })));
+      setCatsExpense(A(ceRes?.data).map((x) => ({ category: x?.category ?? "—", amount: N(x?.amount) })));
       setStatusIncome(A(stIncRes?.data));
       setStatusExpense(A(stExpRes?.data));
-      setCatsIncome(
-        A(ciRes?.data).map((x) => ({
-          category: x?.category ?? "—",
-          amount: N(x?.amount),
-        }))
-      );
-      setCatsExpense(
-        A(ceRes?.data).map((x) => ({
-          category: x?.category ?? "—",
-          amount: N(x?.amount),
-        }))
-      );
       if (sumRes?.data?.currency) setCurrency(sumRes.data.currency);
-      setHasLoaded(true);
     } catch (err) {
       setError(err?.response?.data?.message || err?.message || "Failed");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const clearFilters = () => {
@@ -222,13 +154,12 @@ export default function GroupDashboard() {
       ...p,
       walletId: "",
       type: "both",
-      from: toISO(firstDayOfMonth()),
-      to: toISO(lastDayOfMonth()),
+      from: toISO(firstDay()),
+      to: toISO(lastDay()),
       granularity: "month",
     }));
   };
 
-  /* ================== Merges/Status ================== */
   const statusMerged = useMemo(() => {
     const map = new Map();
     A(statusIncome).forEach((i) => {
@@ -243,14 +174,7 @@ export default function GroupDashboard() {
     });
     A(statusExpense).forEach((e) => {
       const k = e.label ?? "";
-      const row =
-        map.get(k) || {
-          label: k,
-          incomeReceived: 0,
-          incomePending: 0,
-          expensesPaid: 0,
-          expensesPending: 0,
-        };
+      const row = map.get(k) || { label: k, incomeReceived: 0, incomePending: 0, expensesPaid: 0, expensesPending: 0 };
       row.expensesPaid = pct(e.paid ?? e.expensesPaid, e.expected);
       row.expensesPending = pct(e.pending ?? e.expensesPending, e.expected);
       map.set(k, row);
@@ -258,24 +182,36 @@ export default function GroupDashboard() {
     return Array.from(map.values());
   }, [statusIncome, statusExpense]);
 
-  const softUpdating = loading && hasLoaded;
+  const softUpdating = loading && !!summary;
 
-  /* ================== Render ================== */
   return (
     <div className="space-y-6 min-h-screen">
-      {/* Título */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <Title text={t("dashboard.title")} subText={t("dashboard.subtitle")} />
-      </div>
+      <Title text={t("dashboard.title")} subText={t("dashboard.subtitle")} />
 
-      {/* Filtro universal — com toggle interno & botões aplicados */}
+      {/* KPIs acima do filtro */}
+      {summary && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <StatCard title={t("dashboard.kpis.totalIncome")}  value={fmtCurrency(summary?.totalIncome, currency)} />
+          <StatCard title={t("dashboard.kpis.totalExpense")} value={fmtCurrency(summary?.totalExpense, currency)} />
+          <StatCard title={t("dashboard.kpis.net")}          value={fmtCurrency(summary?.net, currency)} />
+          <StatCard
+            title={t("dashboard.kpis.progress")}
+            value={`${Math.round((summary?.pctIncomeReceived ?? 0) * 100)}% / ${Math.round((summary?.pctExpensePaid ?? 0) * 100)}%`}
+          />
+          <StatCard
+            title={t("dashboard.kpis.walletBalance")}
+            value={fmtCurrency((summary?.totalIncome ?? 0) - (summary?.totalExpense ?? 0), currency)}
+          />
+        </div>
+      )}
+
+      {/* Filtros */}
       <DashboardFilterBar
         value={flt}
         onChange={(patch) => setFlt((p) => ({ ...p, ...patch }))}
         onSearch={doSearch}
         onClear={clearFilters}
         loading={loading}
-        // controla que campos mostra (flexível para outros dashboards)
         showGroup
         showUser
         showWallet
@@ -283,51 +219,14 @@ export default function GroupDashboard() {
         showDateTo
         showGranularity
         showType
-        // opções para dropdowns
         options={{ groups, users, wallets }}
         t={t}
-        tone={{ bg, border }}
-        // por defeito aberto + botão "show/hide" DENTRO do componente
         defaultOpen
-        hideToggle={false}
+        showToggle
       />
 
-      {/* KPIs */}
-      {summary && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StatCard
-            title={t("dashboard.kpis.totalIncome")}
-            value={fmtCurrency(summary?.totalIncome, currency)}
-          />
-          <StatCard
-            title={t("dashboard.kpis.totalExpense")}
-            value={fmtCurrency(summary?.totalExpense, currency)}
-          />
-          <StatCard
-            title={t("dashboard.kpis.net")}
-            value={fmtCurrency(summary?.net, currency)}
-          />
-          <StatCard
-            title={t("dashboard.kpis.progress")}
-            value={`${Math.round((summary?.pctIncomeReceived ?? 0) * 100)}% / ${Math.round(
-              (summary?.pctExpensePaid ?? 0) * 100
-            )}%`}
-          />
-          <StatCard
-            title={t("dashboard.kpis.walletBalance")}
-            value={fmtCurrency(
-              (summary?.totalIncome ?? 0) - (summary?.totalExpense ?? 0),
-              currency
-            )}
-          />
-        </div>
-      )}
-
       {/* Evolução */}
-      <div
-        className="rounded-2xl border p-4"
-        style={{ borderColor: border, background: bg }}
-      >
+      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
         <div className="mb-3 font-medium flex items-center gap-2">
           <span>{t("dashboard.charts.evolution")}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
@@ -335,12 +234,7 @@ export default function GroupDashboard() {
         <EvolutionChart
           data={series}
           currency={currency}
-          colors={{
-            grid: border,
-            text: theme.colors.text?.secondary,
-            income: success,
-            expense: danger,
-          }}
+          colors={{ grid: border, text: theme.colors.text?.secondary, income: success, expense: danger }}
           showIncome={showIncome}
           showExpense={showExpense}
           bg={bg}
@@ -349,10 +243,7 @@ export default function GroupDashboard() {
       </div>
 
       {/* Status */}
-      <div
-        className="rounded-2xl border p-4"
-        style={{ borderColor: border, background: bg }}
-      >
+      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
         <div className="mb-3 font-medium flex items-center gap-2">
           <span>{t("dashboard.charts.status")}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
@@ -376,10 +267,7 @@ export default function GroupDashboard() {
       </div>
 
       {/* Categorias */}
-      <div
-        className="rounded-2xl border p-4"
-        style={{ borderColor: border, background: bg }}
-      >
+      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
         <div className="mb-3 font-medium flex items-center gap-2">
           <span>{t("dashboard.charts.categories")}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}

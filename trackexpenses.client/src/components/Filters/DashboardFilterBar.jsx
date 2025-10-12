@@ -1,115 +1,208 @@
-import React, { useMemo, useState } from "react";
-import {
-  Calendar,
-  Users as UsersIcon,
-  Wallet as WalletIcon,
-  LayoutGrid as GroupsIcon,
-  ChevronDown,
-  Search as SearchIcon,
-  X as XIcon,
-} from "lucide-react";
+// src/components/Filters/DashboardFilterBar.jsx
+import React, { useMemo, useRef, useState } from "react";
+import PropTypes from "prop-types";
+import { ChevronDown, Search, X, UserRound, Wallet2, Calendar } from "lucide-react";
+import { useTheme } from "../../styles/Theme/Theme";
 
-const toISO = (d) => {
-  if (!d) return "";
-  const dd = d instanceof Date ? d : new Date(d);
-  return Number.isNaN(+dd) ? "" : dd.toISOString().slice(0, 10);
-};
 const cx = (...xs) => xs.filter(Boolean).join(" ");
 
-function Field({ icon: Icon, children, className = "", tone }) {
-  const bg = tone?.bg ?? "rgba(148,163,184,0.08)";
-  const border = tone?.border ?? "rgba(148,163,184,0.25)";
+const paperBg = (theme) => theme?.colors?.background?.paper || "transparent";
+const ringColor = (theme) => theme?.colors?.secondary?.light || "rgba(148,163,184,0.25)";
+const capsuleBg = (theme) => theme?.colors?.glass?.soft || "rgba(148,163,184,0.08)";
+const primaryMain = (theme) => theme?.colors?.primary?.main || "#4f8df9";
+const palette = (theme) => ({
+  paper: paperBg(theme),
+  ring: ringColor(theme),
+  capsule: capsuleBg(theme),
+  primary: primaryMain(theme),
+  text: theme?.colors?.text?.primary || "#ffffff",
+  textMuted: theme?.colors?.text?.secondary || "rgba(255,255,255,0.85)",
+  clearBg: "rgba(255,255,255,0.80)",
+  clearFg: "#111827",
+  applyShadow: "0 6px 14px rgba(99,91,255,0.35)",
+});
+
+const toISO = (d) => (d ? new Date(d).toISOString().slice(0, 10) : "");
+const fmtPT = (iso) => {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return y && m && d ? `${d}/${m}/${y}` : iso;
+};
+
+/* ========= SUB-COMPONENTES ========= */
+
+function SelectCapsule({
+  value,
+  onChange,
+  options,
+  label,
+  Icon,
+  placeholder = "—",
+  theme,
+}) {
+  const colors = palette(theme);
+
+  const norm = useMemo(() => {
+    return (options || []).map((o, i) => {
+      const v = o?.id ?? o?.Id ?? o?.value ?? o?.Value ?? i.toString();
+      let lbl =
+        o?.name ??
+        o?.Name ??
+        o?.label ??
+        o?.Label ??
+        o?.email ??
+        o?.Email ??
+        "";
+      if (o?.isPrimary) lbl = `${lbl} (Primary)`;
+      return { val: String(v), label: String(lbl) };
+    });
+  }, [options]);
+
+  const currentLabel =
+    norm.find((o) => o.val === String(value))?.label || placeholder;
+
   return (
-    <div
-      className={cx(
-        "flex items-center gap-2 min-w-0 rounded-2xl px-3 py-2 h-[52px] ring-1",
-        className
+    <div className="flex flex-col gap-1 min-w-[260px]">
+      {label && (
+        <label className="text-xs select-none" style={{ color: colors.textMuted }}>
+          {label}
+        </label>
       )}
-      style={{ background: bg, borderColor: border }}
-    >
-      {Icon && <Icon className="w-4 h-4 shrink-0 opacity-80" />}
-      <div className="min-w-0 flex-1">{children}</div>
+      <div
+        className="relative h-[52px] rounded-2xl ring-1 overflow-hidden"
+        style={{ background: colors.capsule, borderColor: colors.ring }}
+      >
+        {Icon && (
+          <span
+            className="absolute left-0 top-0 h-full w-[48px] flex items-center justify-center pointer-events-none z-30"
+            style={{ color: colors.text }}
+          >
+            <Icon className="w-4.5 h-4.5" />
+          </span>
+        )}
+
+        {/* Overlay visível */}
+        <div className="absolute inset-0 z-30 flex items-center pl-[56px] pr-8 pointer-events-none">
+          <span className="text-sm truncate w-full" style={{ color: colors.text }}>
+            {currentLabel}
+          </span>
+        </div>
+
+        {/* select por baixo (interativo) */}
+        <select
+          value={value ?? ""}
+          onChange={(e) => onChange?.(e.target.value)}
+          className="relative z-10 block w-full h-full pl-[56px] pr-8 outline-none bg-transparent appearance-none cursor-pointer"
+          style={{
+            color: "transparent",
+            WebkitTextFillColor: "transparent",
+            backgroundColor: "transparent",
+            border: "none",
+          }}
+          aria-label={label}
+          title={currentLabel}
+        >
+          {norm.map((opt) => (
+            <option
+              key={opt.val}
+              value={opt.val}
+              style={{ backgroundColor: "rgba(15,23,42,0.95)", color: "#f8fafc" }}
+            >
+              {opt.label}
+            </option>
+          ))}
+          {!norm.some((o) => o.val === String(value)) && (
+            <option value="">{placeholder}</option>
+          )}
+        </select>
+
+        <ChevronDown
+          className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-70 pointer-events-none z-30"
+          style={{ color: colors.text }}
+        />
+      </div>
     </div>
   );
 }
 
-function FancySelect({ value, onChange, options = [], placeholder = "—" }) {
-  const norm = useMemo(
-    () =>
-      (options || []).map((o) => {
-        const v = o?.value ?? o?.id ?? "";
-        let label = o?.label ?? o?.name ?? "";
-        if (o?.isPrimary) label += " (Primary)";
-        return { value: String(v), label };
-      }),
-    [options]
-  );
-  const current = norm.find((o) => o.value === String(value))?.label || "";
+function DateCapsule({ value, onChange, label, theme }) {
+  const colors = palette(theme);
+  const inputRef = useRef(null);
+  const iso = toISO(value);
+  const display = fmtPT(iso);
+
+  const openPicker = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    if (typeof el.showPicker === "function") el.showPicker();
+    else el.focus();
+  };
 
   return (
-    <div className="relative min-w-0">
-      <select
-        value={value ?? ""}
-        onChange={(e) => onChange?.(e.target.value)}
-        className="appearance-none bg-transparent outline-none w-full truncate pr-8 rounded-xl h-10"
-        title={current || placeholder}
-        style={{
-          borderRadius: "0.75rem",
-          padding: "6px 10px",
-          backgroundColor: "transparent",
-        }}
+    <div className="flex flex-col gap-1 min-w-[260px]">
+      {label && (
+        <label className="text-xs select-none" style={{ color: colors.textMuted }}>
+          {label}
+        </label>
+      )}
+      <button
+        type="button"
+        onClick={openPicker}
+        className="relative h-[52px] rounded-2xl ring-1 w-full"
+        style={{ background: colors.capsule, borderColor: colors.ring }}
       >
-        {norm.map((o) => (
-          <option
-            key={o.value}
-            value={o.value}
-            title={o.label}
-            style={{
-              borderRadius: "0.75rem",
-              padding: "6px 10px",
-              backgroundColor: "#1e293b",
-              color: "#f1f5f9",
-            }}
-          >
-            {o.label}
-          </option>
-        ))}
-        <option value="">{placeholder}</option>
-      </select>
+        <span
+          className="absolute left-0 top-0 h-full w-[48px] flex items-center justify-center pointer-events-none z-30"
+          style={{ color: colors.text }}
+        >
+          <Calendar className="w-4.5 h-4.5" />
+        </span>
 
-      <ChevronDown
-        className="w-4 h-4 opacity-70 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-        aria-hidden="true"
-      />
+        <span
+          className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none text-sm"
+          style={{ color: colors.text }}
+        >
+          {display || "—"}
+        </span>
+
+        <input
+          ref={inputRef}
+          type="date"
+          value={iso}
+          onChange={(e) => onChange?.(e.target.value)}
+          className="absolute inset-0 z-10 opacity-0 cursor-pointer"
+          aria-label={label}
+        />
+      </button>
     </div>
   );
 }
 
-function Segmented({ items, value, onChange, tone }) {
-  const border = tone?.border ?? "rgba(148,163,184,0.25)";
+function Segmented({ value, onChange, options, theme }) {
+  const colors = palette(theme);
   return (
     <div
-      className="rounded-2xl p-1 ring-1 grid"
+      className="w-full rounded-2xl h-[52px] px-3 py-[8px] grid"
       style={{
-        gridTemplateColumns: `repeat(${items.length}, minmax(0,1fr))`,
-        borderColor: border,
+        gridTemplateColumns: `repeat(${options.length}, minmax(0,1fr))`,
+        background: colors.capsule,
+        border: `1px solid ${colors.ring}`,
       }}
     >
-      {items.map((it) => {
-        const active = it.value === value;
+      {options.map((opt) => {
+        const active = value === opt.value;
         return (
           <button
-            key={it.value}
-            onClick={() => onChange?.(it.value)}
-            className={cx(
-              "h-12 rounded-xl px-4 text-sm font-medium truncate transition",
-              active
-                ? "bg-[#5B5BF5] text-white"
-                : "bg-transparent text-white/85 hover:bg-white/10"
-            )}
-            title={typeof it.label === "string" ? it.label : undefined}
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className="mx-1 rounded-xl h-[36px] px-5 text-sm font-medium min-w-0 truncate transition"
+            style={{
+              color: active ? "#fff" : colors.textMuted,
+              background: active ? colors.primary : "transparent",
+              boxShadow: active ? "inset 0 0 0 1px rgba(255,255,255,0.20)" : "none",
+            }}
           >
-            <span className="block truncate">{it.label}</span>
+            {opt.label}
           </button>
         );
       })}
@@ -117,212 +210,195 @@ function Segmented({ items, value, onChange, tone }) {
   );
 }
 
+/* ========= PRINCIPAL ========= */
+
 export default function DashboardFilterBar({
-  value,
+  value = {},                 // <- default seguro
   onChange,
   onSearch,
   onClear,
-  loading = false,
-  options = {},
+  loading,
   t,
-  tone = {},
-  defaultOpen = true,
-  hideToggle = false,
-  className = "",
+  showToggle = true,
+  defaultOpen = false,
+  options = { users: [], wallets: [] },
 }) {
-  const v = value ?? {};
-  const set = (patch) => onChange?.(patch);
+  const { theme } = useTheme();
+  const colors = palette(theme);
 
-  const groups = Array.isArray(options.groups) ? options.groups : [];
-  const users = Array.isArray(options.users) ? options.users : [];
-  const wallets = Array.isArray(options.wallets) ? options.wallets : [];
+  // inicia sempre fechado
+  const [open, setOpen] = useState(false);
 
-  const bg = tone?.bg ?? "rgba(148,163,184,0.08)";
-  const border = tone?.border ?? "rgba(148,163,184,0.25)";
+  // alias seguro para evitar acessos nulos
+  const v = value || {};
 
-  const [open, setOpen] = useState(!!defaultOpen);
+  const txt = {
+    filters: t?.("common.filters") || "Filters",
+    user: t?.("dashboard.filters.user") || "User",
+    wallet: t?.("dashboard.filters.wallet") || "Wallet",
+    from: t?.("dashboard.filters.from") || "From",
+    to: t?.("dashboard.filters.to") || "To",
+    day: t?.("dashboard.filters.day") || "Day",
+    week: t?.("dashboard.filters.week") || "Week",
+    month: t?.("dashboard.filters.month") || "Month",
+    both: t?.("dashboard.filters.both") || "Income & Expenses",
+    incOnly: t?.("dashboard.filters.incomeOnly") || "Income only",
+    expOnly: t?.("dashboard.filters.expenseOnly") || "Expenses only",
+    clear: t?.("common.clear") || "Clear",
+    apply: t?.("common.apply") || "Apply",
+    allWallets: t?.("dashboard.filters.allWallets") || "All wallets",
+    selectUser: t?.("common.selectUser") || "Select user",
+  };
 
-  const toggleLabel = open
-    ? t?.("common.hideFilters") || "Hide filters"
-    : t?.("common.showFilters") || "Show filters";
+  const showUser = Array.isArray(options.users) && options.users.length > 0;
+  const usersOpts = useMemo(() => (showUser ? options.users : []), [showUser, options.users]);
+
+  const walletsOpts = useMemo(
+    () => [{ id: "__ALL__", name: txt.allWallets }, ...(options.wallets || [])],
+    [options.wallets, txt.allWallets]
+  );
+
+  const setPatch = (patch) => onChange?.(patch);
+
+  // Validação de intervalo (usa v.* para estar protegido)
+  const setFromSafe = (nextFromISO) => {
+    const to = v.to ? toISO(v.to) : "";
+    let safeFrom = nextFromISO || "";
+    if (to && safeFrom && safeFrom > to) safeFrom = to;
+    setPatch({ from: safeFrom });
+  };
+
+  const setToSafe = (nextToISO) => {
+    const from = v.from ? toISO(v.from) : "";
+    let safeTo = nextToISO || "";
+    if (from && safeTo && safeTo < from) safeTo = from;
+    setPatch({ to: safeTo });
+  };
 
   return (
-    <div className={cx("w-full", className)}>
-{!hideToggle && (
-  <div className="w-full flex justify-start mb-3 relative z-[5]">
-    <button
-      type="button"
-      onClick={() => setOpen((s) => !s)}
-      aria-pressed={open}
-      className={cx(
-        "relative min-w-[240px] h-[52px] rounded-2xl ring-1 px-4",
-        "flex items-center justify-between text-white font-semibold tracking-tight transition"
-      )}
-      style={{ background: bg, borderColor: border }}
-    >
-      <span className="truncate text-[0.95rem] leading-none flex-1 text-left">
-        {toggleLabel || "Filters"}
-      </span>
-
-      <ChevronDown
-        className={cx(
-          "w-4 h-4 opacity-80 pointer-events-none transition-transform duration-200 ml-2",
-          "relative top-[1px]", 
-          open ? "rotate-180" : ""
+    <div className="w-full">
+      <div className="w-full flex justify-start mb-3 flex-wrap gap-2">
+        {showToggle && (
+          <div
+            className="h-[52px] rounded-2xl px-5 flex items-center text-sm font-medium min-w-[180px] ring-1"
+            style={{ background: colors.capsule, borderColor: colors.ring, color: colors.text }}
+          >
+            <span className="truncate" style={{ color: colors.textMuted }}>
+              {txt.filters}
+            </span>
+            <button
+              onClick={() => setOpen((s) => !s)}
+              className="ml-auto inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-white/10 transition"
+            >
+              <ChevronDown
+                className={cx("w-4 h-4 opacity-80 transition-transform", open ? "rotate-180" : "")}
+                style={{ color: colors.text }}
+              />
+            </button>
+          </div>
         )}
-      />
-    </button>
-  </div>
-)}
+      </div>
 
-
-      <div
-        className={cx(
-          "transition-[max-height,opacity] duration-300",
-          open ? "max-h-[100rem] opacity-100 pt-1" : "max-h-0 opacity-0"
-        )}
-        style={{ overflow: open ? "visible" : "hidden" }}
-      >
+      {!open ? null : (
         <div
-          className="rounded-3xl p-4 ring-1 relative z-[1]"
-          style={{ background: bg, borderColor: border }}
+          className="rounded-2xl px-5 py-4 ring-1"
+          style={{ background: colors.paper, borderColor: colors.ring }}
         >
+          {/* Linha 1 */}
           <div
             className="grid gap-3"
-            style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            }}
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}
           >
-            {groups.length > 0 && (
-              <Field icon={GroupsIcon} tone={{ bg, border }}>
-                <FancySelect
-                  value={v.groupId || ""}
-                  onChange={(val) =>
-                    set({ groupId: val, userId: "", walletId: "" })
-                  }
-                  options={groups}
-                  placeholder={t?.("common.selectGroup") || "Select group"}
-                />
-              </Field>
-            )}
-
-            {users.length > 0 && (
-              <Field icon={UsersIcon} tone={{ bg, border }}>
-                <FancySelect
-                  value={v.userId || ""}
-                  onChange={(val) => set({ userId: val, walletId: "" })}
-                  options={users}
-                  placeholder={t?.("common.selectUser") || "Select user"}
-                />
-              </Field>
-            )}
-
-            {wallets.length > 0 && (
-              <Field icon={WalletIcon} tone={{ bg, border }}>
-                <FancySelect
-                  value={v.walletId || ""}
-                  onChange={(val) => set({ walletId: val })}
-                  options={wallets}
-                  placeholder={
-                    t?.("dashboard.filters.wallet_all") || "All wallets"
-                  }
-                />
-              </Field>
-            )}
-
-            <Field icon={Calendar} tone={{ bg, border }}>
-              <input
-                type="date"
-                value={toISO(v.from)}
-                onChange={(e) => set({ from: e.target.value })}
-                className="bg-transparent outline-none w-full h-11 text-[0.95rem]"
+            {showUser && (
+              <SelectCapsule
+                value={v.userId ?? ""}
+                onChange={(val) => setPatch({ userId: val, walletId: "" })}
+                options={usersOpts}
+                label={txt.user}
+                Icon={UserRound}
+                placeholder={txt.selectUser}
+                theme={theme}
               />
-            </Field>
+            )}
 
-            <Field icon={Calendar} tone={{ bg, border }}>
-              <input
-                type="date"
-                value={toISO(v.to)}
-                onChange={(e) => set({ to: e.target.value })}
-                className="bg-transparent outline-none w-full h-11 text-[0.95rem]"
-              />
-            </Field>
+            <SelectCapsule
+              value={!v.walletId ? "__ALL__" : String(v.walletId)}
+              onChange={(val) => setPatch({ walletId: val === "__ALL__" ? "" : val })}
+              options={walletsOpts.map((w) => ({ id: w.id, name: w.name, isPrimary: w.isPrimary }))}
+              label={txt.wallet}
+              Icon={Wallet2}
+              placeholder={txt.allWallets}
+              theme={theme}
+            />
+
+            <DateCapsule value={v.from} onChange={setFromSafe} label={txt.from} theme={theme} />
+            <DateCapsule value={v.to}   onChange={setToSafe}   label={txt.to}   theme={theme} />
           </div>
 
-          <div
-            className="mt-3 grid gap-3"
-            style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            }}
-          >
+          {/* Linha 2 */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
             <Segmented
-              items={[
-                {
-                  value: "day",
-                  label: t?.("dashboard.filters.day") || "Day",
-                },
-                {
-                  value: "week",
-                  label: t?.("dashboard.filters.week") || "Week",
-                },
-                {
-                  value: "month",
-                  label: t?.("dashboard.filters.month") || "Month",
-                },
+              value={v.granularity}
+              onChange={(val) => setPatch({ granularity: val })}
+              options={[
+                { value: "day", label: txt.day },
+                { value: "week", label: txt.week },
+                { value: "month", label: txt.month },
               ]}
-              value={v.granularity || "month"}
-              onChange={(val) => set({ granularity: val })}
-              tone={{ border }}
+              theme={theme}
             />
             <Segmented
-              items={[
-                {
-                  value: "both",
-                  label:
-                    t?.("dashboard.filters.type_both") || "Income & Expenses",
-                },
-                {
-                  value: "income",
-                  label:
-                    t?.("dashboard.filters.type_income") || "Income only",
-                },
-                {
-                  value: "expense",
-                  label:
-                    t?.("dashboard.filters.type_expense") || "Expenses only",
-                },
+              value={v.type}
+              onChange={(val) => setPatch({ type: val })}
+              options={[
+                { value: "both", label: txt.both },
+                { value: "income", label: txt.incOnly },
+                { value: "expense", label: txt.expOnly },
               ]}
-              value={v.type || "both"}
-              onChange={(val) => set({ type: val })}
-              tone={{ border }}
+              theme={theme}
             />
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-3 justify-end">
+          {/* Linha 3 */}
+          <div className="mt-4 flex flex-wrap justify-end gap-3">
             <button
               type="button"
-              onClick={() => onClear?.()}
-              className="h-11 px-5 rounded-2xl bg-white/80 text-black/90 flex items-center gap-2"
+              onClick={onClear}
+              disabled={loading}
+              className="h-11 px-6 rounded-2xl font-medium flex items-center gap-2"
+              style={{ background: colors.clearBg, color: colors.clearFg }}
             >
-              <XIcon className="w-4 h-4" />
-              <span>{t?.("common.clear") || "Clear"}</span>
+              <X className="w-4 h-4" />
+              {txt.clear}
             </button>
             <button
               type="button"
-              onClick={() => onSearch?.()}
+              onClick={onSearch}
               disabled={loading}
-              className={cx(
-                "h-11 px-5 rounded-2xl flex items-center gap-2",
-                "bg-[#5B5BF5] text-white font-medium",
-                "disabled:opacity-70 disabled:cursor-not-allowed"
-              )}
+              className="h-11 px-7 rounded-2xl font-medium flex items-center gap-2 disabled:opacity-60"
+              style={{ background: colors.primary, color: "#fff", boxShadow: colors.applyShadow }}
             >
-              <SearchIcon className="w-5 h-5" />
-              <span>{t?.("common.apply") || "Apply"}</span>
+              <Search className="w-4 h-4" />
+              {txt.apply}
             </button>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
+
+DashboardFilterBar.propTypes = {
+  value: PropTypes.object,            // agora opcional
+  onChange: PropTypes.func.isRequired,
+  onSearch: PropTypes.func,
+  onClear: PropTypes.func,
+  loading: PropTypes.bool,
+  t: PropTypes.func,
+  showToggle: PropTypes.bool,
+  defaultOpen: PropTypes.bool,
+  options: PropTypes.shape({
+    users: PropTypes.array,
+    wallets: PropTypes.array,
+  }),
+};

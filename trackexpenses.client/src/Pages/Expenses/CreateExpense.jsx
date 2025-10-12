@@ -87,13 +87,10 @@ function QRUploadTile({ onDecoded, title, subtitle, label }) {
   );
 }
 
-
-
 export default function CreateExpense() {
   const { auth } = useContext(AuthContext) || {};
   const { t } = useLanguage ? useLanguage() : { t: () => undefined };
 
-  // método: one | installments | recurring
   const [kind, setKind] = useState("one");
 
   const [form, setForm] = useState({
@@ -175,7 +172,6 @@ export default function CreateExpense() {
     return () => { alive = false; };
   }, [auth?.Email]);
 
-  // união: default + histórico 
   const mergedCategories = useMemo(() => {
     const baseValuesLower = new Set(DEFAULT_EXPENSE_CATEGORIES.map(c => c.value.toLowerCase()));
     const extras = historyCategories.filter(c => !baseValuesLower.has(c.toLowerCase()));
@@ -196,21 +192,30 @@ export default function CreateExpense() {
   const runValidation = (state) => {
     const F = state || form;
     const e = {};
-    if (!N(F.Name))      e.Name = t?.("errors.required") || "Required";
-    if (!N(F.WalletId))  e.WalletId = t?.("errors.required") || "Required";
-    if (!N(F.StartDate)) e.StartDate = t?.("errors.required") || "Required";
+    const totalNum = Number(F.Value);
+    const paidNum = Number(F.PayAmount || 0);
+
+    if (!N(F.Name))      e.Name = (t?.("errors.required") || "Required");
+    if (!N(F.WalletId))  e.WalletId = (t?.("errors.required") || "Required");
+    if (!N(F.StartDate)) e.StartDate = (t?.("errors.required") || "Required");
+
+    if (!(totalNum > 0)) e.Value = (t?.("errors.invalidTotal") || "Total must be greater than zero.");
+    if (paidNum < 0)     e.PayAmount = (t?.("errors.invalidPayAmount") || "Paid amount cannot be negative.");
+    if (paidNum > totalNum) e.PayAmount = (t?.("errors.invalidPayAmount") || "Paid amount cannot exceed total value.");
+
     if (F.EndDate) {
       const s = new Date(F.StartDate), en = new Date(F.EndDate);
       if (en < s) e.EndDate = t?.("errors.invalidEndDate") || "End date cannot be before start date.";
     }
-    if (Number(F.PayAmount) > Number(F.Value)) {
-      e.PayAmount = t?.("errors.invalidPayAmount") || "Paid amount cannot exceed total value.";
-    }
+
     setFieldErrors(e);
-    setFormValid(Object.keys(e).length === 0);
-    return Object.keys(e).length === 0;
+    const ok = Object.keys(e).length === 0;
+    setFormValid(ok);
+    return ok;
   };
-  useEffect(() => { runValidation(form); }, [form.Name, form.WalletId, form.StartDate, form.EndDate, form.Value, form.PayAmount]);
+  useEffect(() => {
+    runValidation(form);
+  }, [form.Name, form.WalletId, form.StartDate, form.EndDate, form.Value, form.PayAmount]);
 
   // KPIs
   const total = Number(form.Value || 0);
@@ -251,6 +256,8 @@ export default function CreateExpense() {
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState(null);
 
+  const toIsoIfSet = (d) => (d ? new Date(d).toISOString() : "");
+
   const buildFormData = () => {
     let Periodicity = "OneTime";
     let StartDate = form.StartDate;
@@ -267,20 +274,23 @@ export default function CreateExpense() {
       }
     } else if (kind === "recurring") {
       Periodicity = form.Periodicity || "Monthly";
-      RepeatCount = form.RepeatCount ? Number(form.RepeatCount) : 12;
+      RepeatCount = form.RepeatCount ? Number(form.RepeatCount) : (Periodicity === "Endless" ? undefined : 12);
     }
 
     const fd = new FormData();
     fd.append("UserEmail", auth?.Email || "");
     fd.append("Name", form.Name || (t?.("expenses.form.defaultName") || "Expense"));
     fd.append("Description", form.Description || "");
-    fd.append("Value", String(total || 0));
-    fd.append("StartDate", StartDate);
-    fd.append("EndDate", EndDate);
-    fd.append("RepeatCount", String(RepeatCount || 1));
+    fd.append("Value", String(Number(total || 0).toFixed(2)));
+    fd.append("PayAmount", String(Number(form.PayAmount || 0).toFixed(2)));
+    fd.append("StartDate", toIsoIfSet(StartDate));
+    if (EndDate) fd.append("EndDate", toIsoIfSet(EndDate));
+    if (RepeatCount != null) fd.append("RepeatCount", String(RepeatCount || 1));
     fd.append("Periodicity", Periodicity);
     fd.append("Category", form.Category || "");
     fd.append("WalletId", form.WalletId || "");
+    // fd.append("ShouldNotify", String(false));
+
     if (form.Image) {
       fd.append("UploadType", form.UploadType || "ExpenseImage");
       fd.append("Image", form.Image);
@@ -310,7 +320,6 @@ export default function CreateExpense() {
     }
   };
 
-  // manter categoria custom na lista se não existir
   const knownValuesLower = useMemo(
     () => new Set(DEFAULT_EXPENSE_CATEGORIES.map(c => c.value.toLowerCase()).concat(historyCategories.map(h => h.toLowerCase()))),
     [historyCategories]

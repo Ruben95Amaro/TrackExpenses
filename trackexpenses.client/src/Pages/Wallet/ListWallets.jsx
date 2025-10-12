@@ -1,5 +1,5 @@
 // src/pages/Wallets/ListWallets.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 
@@ -10,6 +10,7 @@ import GenericTable from "../../components/Tables/GenericTable";
 import { useTheme } from "../../styles/Theme/Theme";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
+import AuthContext from "../../services/Authentication/AuthContext";
 
 /* ----------------------------- UI helpers ----------------------------- */
 function Badge({ children, tone = "info" }) {
@@ -30,6 +31,16 @@ function Badge({ children, tone = "info" }) {
   );
 }
 
+/* ----------------------------- premium check ----------------------------- */
+const norm = (v) => String(v ?? "").trim().toUpperCase();
+function isUserPremium({ roles, auth }) {
+  if (Array.isArray(roles) && roles.some((r) => norm(r) === "PREMIUM")) return true;
+  const flag = auth?.isPremium ?? auth?.IsPremium ?? auth?.premium ?? auth?.Premium;
+  if (typeof flag === "boolean") return flag;
+  const plan = norm(auth?.subscription?.plan ?? auth?.Subscription?.Plan ?? auth?.plan ?? auth?.Plan);
+  return ["PREMIUM", "PRO", "PLUS"].includes(plan);
+}
+
 /* =============================== PAGE =============================== */
 export default function ListWallets() {
   const [wallets, setWallets] = useState([]);
@@ -39,6 +50,7 @@ export default function ListWallets() {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const { theme } = useTheme();
+  const { roles, auth } = useContext(AuthContext) || {};
 
   const [flt, setFlt] = useState({ q: "", status: "all" });
 
@@ -70,12 +82,8 @@ export default function ListWallets() {
     [t]
   );
 
-  // limpar filtros
-  const handleClear = () => {
-    setFlt({ q: "", status: "all" });
-  };
+  const handleClear = () => setFlt({ q: "", status: "all" });
 
-  // filtro dinâmico (search + status reagem de imediato)
   const filteredWallets = useMemo(() => {
     const q = (flt.q || "").toLowerCase().trim();
     const status = (flt.status || "all").toLowerCase();
@@ -96,6 +104,14 @@ export default function ListWallets() {
       return matchesText && matchesStatus;
     });
   }, [wallets, flt]);
+
+  /* ---------- regra de criação ---------- */
+  const premium = isUserPremium({ roles, auth });
+  const activeCount = useMemo(
+    () => (wallets || []).filter((w) => !w?.isArchived).length,
+    [wallets]
+  );
+  const canCreate = premium || activeCount < 1;
 
   const columns = [
     {
@@ -127,21 +143,39 @@ export default function ListWallets() {
     <div className="space-y-6 min-h-screen">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title text={t?.("wallets.list") || "Carteiras"} />
-        <Button
-          variant="primary"
-          size="md"
-          fullWidth={false}
-          onClick={() => navigate("/CreateWallet")}
-          className="shrink-0"
-        >
-          <span className="inline-flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            {t?.("wallets.new") || "Nova Wallet"}
-          </span>
-        </Button>
+
+        {/* Botão: quando desativado, mostrar texto no hover (sem tooltip) */}
+        <div className="relative group inline-flex flex-col items-end">
+          <Button
+            variant="primary"
+            size="md"
+            fullWidth={false}
+            onClick={() => canCreate && navigate("/CreateWallet")}
+            disabled={!canCreate}
+            className="shrink-0"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              {t?.("wallets.new") || "Nova Wallet"}
+            </span>
+          </Button>
+
+          {!canCreate && (
+            <span
+              className="
+                mt-2 text-xs text-gray-600 dark:text-gray-300
+                opacity-0 group-hover:opacity-100 transition-opacity duration-200
+                select-none
+              "
+              role="status"
+            >
+              {t?.("wallets.limitReachedTip") ||
+                "Precisas de Premium para criar mais carteiras."}
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Filtro: search dinâmico + status imediato + botão Clear */}
       <GenericFilter
         className="mt-2"
         value={flt}
@@ -151,10 +185,16 @@ export default function ListWallets() {
         theme={theme}
         showToggle
         defaultOpen
-        showSearch                     // mostra o campo de pesquisa
+        showSearch
         searchPlaceholder={t?.("wallets.searchPlaceholder") || "Pesquisar carteiras..."}
         filters={[
-          { key: "status", type: "select", options: statusOptions, defaultValue: "all" },
+          {
+            key: "status",
+            type: "select",
+            label: t?.("wallets.status") || "Status",   // <- LABEL ADICIONADO
+            options: statusOptions,
+            defaultValue: "all",
+          },
         ]}
       />
 

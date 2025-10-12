@@ -160,7 +160,7 @@ export default function ListEarnings() {
         <StatCard title={t?.("earnings.status.not_received") || "Pending"} value={`${Math.max(0,totalInst-totalReceived)}/${totalInst}`} />
       </div>
 
-      {/* Filtro: botão de toggle FORA do painel (sem Card) */}
+      {/* Filtro: toggle fora do painel */}
       <GenericFilter
         className="mt-2"
         value={flt}
@@ -172,11 +172,22 @@ export default function ListEarnings() {
         showSearch
         searchPlaceholder={t?.("earnings.searchPlaceholder") || "Search name, description or category..."}
         filters={[
-          { key: "category", type: "select", options: categoryOptions },
-          { key: "wallet",   type: "select", options: walletOptions },
+          {
+            key: "category",
+            type: "select",
+            label: t?.("earnings.category") || "Category",
+            options: categoryOptions,
+          },
+          {
+            key: "wallet",
+            type: "select",
+            label: t?.("earnings.wallet") || "Wallet",
+            options: walletOptions,
+          },
           {
             key: "received",
             type: "select",
+            label: t?.("earnings.receivedStatus") || "Received status",
             options: [
               { value: "all",      label: t?.("common.all") || "All" },
               { value: "received", label: t?.("earnings.status.received") || "Received" },

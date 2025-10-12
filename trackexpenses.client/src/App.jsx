@@ -249,9 +249,9 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route element={
             <WalletGate
-              redirectTo="/CreateWallet"
+              redirectTo="/ListWallets"
               delayMs={5200}
-              skipPaths={["/CreateWallet", "/auth"]}
+              skipPaths={["/ListWallets", "/auth"]}
             />
           }>
             <Route path="/EditWallet/:id" element={<EditWallet />} />

@@ -133,6 +133,7 @@ const translations = {
       all: "All Wallets",
       one: "Wallet",
       placeholderName : "Wallet name",
+      limitReachedTip: "You need a Premium plan to create more wallets.",
 
     },
     settings: {

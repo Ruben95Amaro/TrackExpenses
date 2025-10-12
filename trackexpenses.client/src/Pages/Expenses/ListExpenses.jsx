@@ -176,8 +176,7 @@ export default function ListExpenses() {
     {
       key: "category",
       headerKey: "category",
-      accessor: (w) =>
-        N(w?.Category) ? <Chip>{N(w?.Category)}</Chip> : "-",
+      accessor: (w) => N(w?.Category) ? <Chip>{N(w?.Category)}</Chip> : "-",
     },
     {
       key: "value",
@@ -251,7 +250,7 @@ export default function ListExpenses() {
         />
       </div>
 
-      {/* filters — botão toggle fora */}
+      {/* filters */}
       <GenericFilter
         className="mt-2"
         value={flt}
@@ -266,23 +265,26 @@ export default function ListExpenses() {
           "Search name, description or category..."
         }
         filters={[
-          { key: "category", type: "select", options: categoryOptions },
-          { key: "wallet", type: "select", options: walletOptions },
+          {
+            key: "category",
+            type: "select",
+            label: t?.("expenses.category") || "Category",
+            options: categoryOptions,
+          },
+          {
+            key: "wallet",
+            type: "select",
+            label: t?.("expenses.wallet") || "Wallet",
+            options: walletOptions,
+          },
           {
             key: "paid",
             type: "select",
+            label: t?.("expenses.paymentStatus") || "Payment status",
             options: [
               { value: "all", label: t?.("common.all") || "All" },
-              {
-                value: "paid",
-                label:
-                  t?.("expenses.filter.fullyPaid") || "Fully paid",
-              },
-              {
-                value: "unpaid",
-                label:
-                  t?.("expenses.filter.notPaid") || "Not fully paid",
-              },
+              { value: "paid", label: t?.("expenses.filter.fullyPaid") || "Fully paid" },
+              { value: "unpaid", label: t?.("expenses.filter.notPaid") || "Not fully paid" },
             ],
           },
         ]}

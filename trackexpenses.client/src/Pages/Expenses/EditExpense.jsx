@@ -53,13 +53,10 @@ const EP_GET_EXPENSE = (id) => `Expenses/GetExpenseById/${id}`;
 const EP_UPDATE_EXPENSE = "Expenses/UpdateExpense";
 const EP_GET_EXPENSE_IMAGE = (expenseId) => `Expenses/GetExpenseImage/${expenseId}`;
 const EP_UPLOAD_EXPENSE_IMAGE = (expenseId) => `Expenses/UploadImage/${expenseId}`;
-const EP_GET_INSTANCE = (instanceId) =>
-  `Expenses/GetExpenseInstanceById?id=${instanceId}`;
+const EP_GET_INSTANCE = (instanceId) => `Expenses/GetExpenseInstanceById?id=${instanceId}`;
 const EP_UPDATE_INSTANCE = "Expenses/UpdateExpenseInstance";
-const EP_UPLOAD_INSTANCE_IMAGE = (instanceId) =>
-  `Expenses/Instance/UploadImage/${instanceId}`;
-const EP_LIST_INSTANCES_WITH_PATH = (expenseId) =>
-  `Expenses/InstancesByExpense/${expenseId}`;
+const EP_UPLOAD_INSTANCE_IMAGE = (instanceId) => `Expenses/Instance/UploadImage/${instanceId}`;
+const EP_LIST_INSTANCES_WITH_PATH = (expenseId) => `Expenses/InstancesByExpense/${expenseId}`;
 
 export default function EditExpense() {
   const { id } = useParams();
@@ -111,9 +108,7 @@ export default function EditExpense() {
         setErr(null);
 
         // expense + instances
-        const res = await apiCall.get(EP_GET_EXPENSE(id), {
-          validateStatus: () => true,
-        });
+        const res = await apiCall.get(EP_GET_EXPENSE(id), { validateStatus: () => true });
         if (!ok2xx(res) || !hasBody(res))
           throw new Error(res?.data?.message || "Could not load expense.");
         let exp = { ...res.data, Instances: unwrap(res.data?.Instances) };
@@ -148,11 +143,7 @@ export default function EditExpense() {
             ...exp,
             Instances: exp.Instances.map((it) => {
               const rel = it?.Image?.Name || null;
-              return {
-                ...it,
-                _imageRel: rel,
-                _imageUrl: rel ? getPublicUrl(rel) : null,
-              };
+              return { ...it, _imageRel: rel, _imageUrl: rel ? getPublicUrl(rel) : null };
             }),
           };
         }
@@ -223,47 +214,12 @@ export default function EditExpense() {
     }
   };
 
-  const refreshExpenseAndInstancePaths = async () => {
+  const refreshExpense = async () => {
     const e = await apiCall.get(EP_GET_EXPENSE(id), {
       validateStatus: () => true,
     });
     if (ok2xx(e) && hasBody(e)) {
       let exp = { ...e.data, Instances: unwrap(e.data?.Instances) };
-
-      const instPaths = await apiCall.get(EP_LIST_INSTANCES_WITH_PATH(id), {
-        validateStatus: () => true,
-      });
-      if (ok2xx(instPaths) && Array.isArray(instPaths.data)) {
-        const map = new Map(
-          instPaths.data.map((x) => [
-            String(x.Id ?? x.id),
-            x.imagePath ?? x.ImagePath ?? null,
-          ])
-        );
-        exp = {
-          ...exp,
-          Instances: exp.Instances.map((it) => {
-            const rel = map.get(String(it.Id)) || it?.Image?.Name || null;
-            return {
-              ...it,
-              _imageRel: rel,
-              _imageUrl: rel ? getPublicUrl(rel) : null,
-            };
-          }),
-        };
-      } else {
-        exp = {
-          ...exp,
-          Instances: exp.Instances.map((it) => {
-            const rel = it?.Image?.Name || null;
-            return {
-              ...it,
-              _imageRel: rel,
-              _imageUrl: rel ? getPublicUrl(rel) : null,
-            };
-          }),
-        };
-      }
       setExpense(exp);
     }
   };
@@ -314,7 +270,7 @@ export default function EditExpense() {
         }
       }
 
-      await refreshExpenseAndInstancePaths();
+      await refreshExpense();
       setInstModalOpen(false);
     } catch (e) {
       setInstUploading(false);
@@ -330,21 +286,17 @@ export default function EditExpense() {
       const blank = makeTransparentPngBlob();
       const fd = new FormData();
       fd.append("image", new File([blank], "blank.png", { type: "image/png" }));
-      const up = await apiCall.post(
+      await apiCall.post(
         EP_UPLOAD_INSTANCE_IMAGE(instEditing.Id),
         fd,
         { validateStatus: () => true }
       );
       setInstUploading(false);
 
-      if (ok2xx(up)) {
-        setInstPreviewUrl(null);
-        if (instFileInputRef.current) instFileInputRef.current.value = "";
-        await refreshExpenseAndInstancePaths();
-        alert("Photo removed from installment.");
-      } else {
-        throw new Error(up?.data?.message || "Could not remove photo.");
-      }
+      setInstPreviewUrl(null);
+      if (instFileInputRef.current) instFileInputRef.current.value = "";
+      await refreshExpense();
+      alert("Photo removed from installment.");
     } catch (e) {
       setInstUploading(false);
       alert(e?.message || "Could not remove photo.");
@@ -375,7 +327,7 @@ export default function EditExpense() {
         setExpenseFile(null);
         if (expenseFileInputRef.current) expenseFileInputRef.current.value = "";
       } else {
-        throw new Error(r?.data?.message || "Could not upload expense photo.");
+        throw new Error(r?.data?.message || "Upload failed");
       }
     } catch (e) {
       setExpenseUploading(false);
@@ -406,7 +358,7 @@ export default function EditExpense() {
         if (expenseFileInputRef.current) expenseFileInputRef.current.value = "";
         alert("Expense photo removed.");
       } else {
-        throw new Error(r?.data?.message || "Could not remove expense photo.");
+        throw new Error(r?.data?.message || "Remove failed");
       }
     } catch (e) {
       setExpenseUploading(false);
@@ -423,7 +375,7 @@ export default function EditExpense() {
         Name: N(expense.Name) || "Expense",
         Description: expense.Description || "",
         Value: Number(expense.Value || 0),
-        PayAmount: Number(expense.PayAmount || 0),
+        PayAmount: Number(alreadyPaid.toFixed(2)), // derived from instances
         StartDate: expense.StartDate
           ? new Date(expense.StartDate).toISOString()
           : null,
@@ -431,7 +383,6 @@ export default function EditExpense() {
           ? new Date(expense.EndDate).toISOString()
           : null,
         RepeatCount: expense.RepeatCount ?? 0,
-        ShouldNotify: !!expense.ShouldNotify,
         Periodicity: expense.Periodicity || "Monthly",
         Category: expense.Category || "",
         GroupId: expense.GroupId ?? null,
@@ -445,7 +396,7 @@ export default function EditExpense() {
         if (expenseFile) await uploadExpenseImage();
         alert("Expense updated.");
       } else {
-        throw new Error(r?.data?.message || "Could not update expense.");
+        throw new Error(r?.data?.message || "Update failed");
       }
     } catch (e) {
       alert(e?.message || "Could not update expense.");
@@ -511,15 +462,6 @@ export default function EditExpense() {
             onChange={(e) => setExpense((x) => ({ ...x, Value: e.target.value }))}
           />
           <Input
-            label="Paid already"
-            type="number"
-            step="0.01"
-            value={expense.PayAmount ?? ""}
-            onChange={(e) =>
-              setExpense((x) => ({ ...x, PayAmount: e.target.value }))
-            }
-          />
-          <Input
             label="Start date"
             type="date"
             value={
@@ -558,24 +500,15 @@ export default function EditExpense() {
               setExpense((x) => ({ ...x, Category: e.target.value }))
             }
           />
-
-          <label className="flex items-center gap-2 mt-1">
-            <input
-              type="checkbox"
-              checked={!!expense.ShouldNotify}
-              onChange={(e) =>
-                setExpense((x) => ({ ...x, ShouldNotify: e.target.checked }))
-              }
-            />
-            <span>Notify</span>
-          </label>
         </div>
 
         <TextArea
           label="Description"
           rows={3}
           value={expense.Description ?? ""}
-          onChange={(e) => setExpense((x) => ({ ...x, Description: e.target.value }))}
+          onChange={(e) =>
+            setExpense((x) => ({ ...x, Description: e.target.value }))
+          }
         />
       </Card>
 
@@ -846,9 +779,7 @@ export default function EditExpense() {
                   />
 
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <Button onClick={saveInstance} disabled={instUploading}>
-                      {instUploading ? "Saving…" : "Save"}
-                    </Button>
+                    {/* Save está no rodapé; aqui fica apenas o remove */}
                     <Button
                       variant="secondary"
                       onClick={removeInstancePhoto}
@@ -861,9 +792,13 @@ export default function EditExpense() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-4">
+            {/* Modal footer: Cancel (left) + Save (right) */}
+            <div className="mt-4 flex items-center justify-between gap-2">
               <Button variant="secondary" onClick={() => setInstModalOpen(false)}>
                 Cancel
+              </Button>
+              <Button onClick={saveInstance} disabled={instUploading}>
+                {instUploading ? "Saving…" : "Save"}
               </Button>
             </div>
           </div>

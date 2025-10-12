@@ -32,10 +32,19 @@ const DEFAULT_EARNING_CATEGORIES = [
   { key: "other",          value: "Other" },
 ];
 
+// map para o backend: DAY/WEEK/MONTH/YEAR
+const PERIODICITY_TO_UNIT = {
+  Daily: "DAY",
+  Weekly: "WEEK",
+  Monthly: "MONTH",
+  Yearly: "YEAR",
+};
+
 export default function CreateEarning() {
   const { auth } = useContext(AuthContext) || {};
   const { t } = useLanguage ? useLanguage() : { t: () => undefined };
 
+  // método visual: one | installments | recurring
   const [kind, setKind] = useState("one");
 
   const [form, setForm] = useState({
@@ -51,6 +60,7 @@ export default function CreateEarning() {
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // foto
   const [photo, setPhoto] = useState(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -62,6 +72,7 @@ export default function CreateEarning() {
   };
   useEffect(() => () => { if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl); }, [photoPreviewUrl]);
 
+  // wallets
   const [wallets, setWallets] = useState([]);
   const walletOptions = useMemo(
     () => [{ id: "", name: t?.("wallets.select") || "Select wallet" },
@@ -79,12 +90,13 @@ export default function CreateEarning() {
         const last = localStorage.getItem(LAST_WALLET_KEY);
         const firstId = (list?.[0]?.Id ?? list?.[0]?.id) || "";
         setForm((f) => ({ ...f, WalletId: f.WalletId || last || firstId }));
-      } catch {}
+      } catch {/* ignore */ }
     })();
     return () => { alive = false; };
   }, []);
   useEffect(() => { if (form.WalletId) localStorage.setItem(LAST_WALLET_KEY, form.WalletId); }, [form.WalletId]);
 
+  // categorias do histórico
   const [historyCategories, setHistoryCategories] = useState([]);
   useEffect(() => {
     let alive = true;
@@ -100,7 +112,7 @@ export default function CreateEarning() {
         const cats = Array.from(new Set(list.map(e => N(e?.Category)).filter(Boolean)))
           .sort((a, b) => a.localeCompare(b));
         setHistoryCategories(cats);
-      } catch {}
+      } catch {/* ignore */ }
     })();
     return () => { alive = false; };
   }, [auth?.Email]);
@@ -117,6 +129,7 @@ export default function CreateEarning() {
     return [...defaults, ...extraItems];
   }, [historyCategories]);
 
+  // validação / KPIs
   const validAmount = Number(String(form.Amount).replace(",", ".")) > 0;
   const formValid = validAmount && !!form.FirstDate && N(form.Title) && N(form.WalletId);
 
@@ -124,6 +137,7 @@ export default function CreateEarning() {
   const installmentsCount = Math.max(1, Number(form.InstallmentsCount || 0) || 1);
   const perInstallment = kind === "installments" ? (installmentsCount > 0 ? total / installmentsCount : 0) : 0;
 
+  // submit
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -149,11 +163,12 @@ export default function CreateEarning() {
       fd.append("RepeatEvery", "1");
       fd.append("RepeatUnit", "MONTH");
       fd.append("Occurrences", String(installmentsCount));
+      // SplitMode default: SPLIT_TOTAL 
     } else if (kind === "recurring") {
       const reps = form.RepeatCount ? Number(form.RepeatCount) : 12;
       fd.append("Method", "RECURRING");
       fd.append("RepeatEvery", "1");
-      fd.append("RepeatUnit", (form.Periodicity || "Monthly").toUpperCase());
+      fd.append("RepeatUnit", PERIODICITY_TO_UNIT[form.Periodicity] || "MONTH");
       fd.append("Occurrences", String(reps));
     }
 
@@ -192,12 +207,14 @@ export default function CreateEarning() {
     <div className="space-y-6">
       <Title text={t?.("earnings.new") || "New earning"} />
 
+      {/* KPIs  */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title={t?.("earnings.total") || "Total"} value={total.toLocaleString(undefined, { style: "currency", currency: CURRENCY })} accent="success" />
-        <StatCard title={t?.("earnings.installments") || "Installments"} value={kind === "installments" ? String(installmentsCount) : (kind === "recurring" ? (form.RepeatCount || "—") : "—")} accent="success" />
-        <StatCard title={t?.("earnings.perInstallment") || "Per installment"} value={(kind === "installments" ? perInstallment : 0).toLocaleString(undefined, { style: "currency", currency: CURRENCY })} accent="success" />
+        <StatCard title={t?.("earnings.total") || "Total"} value={total.toLocaleString(undefined, { style: "currency", currency: CURRENCY })} />
+        <StatCard title={t?.("earnings.installments") || "Installments"} value={kind === "installments" ? String(installmentsCount) : (kind === "recurring" ? (form.RepeatCount || "—") : "—")} />
+        <StatCard title={t?.("earnings.perInstallment") || "Per installment"} value={(kind === "installments" ? perInstallment : 0).toLocaleString(undefined, { style: "currency", currency: CURRENCY })} />
       </div>
 
+      {/* Seleção do método */}
       <Card>
         <div className="flex flex-wrap items-center justify-evenly py-4">
           <Button type="button" variant={kind === "one" ? "primary" : "secondary"} onClick={() => setKind("one")} className="h-12 w-60 text-base rounded-lg">
@@ -248,6 +265,7 @@ export default function CreateEarning() {
         )}
       </Card>
 
+      {/* Foto / Recibo  */}
       <Card>
         <div className="flex items-start gap-4">
           <button
@@ -264,8 +282,8 @@ export default function CreateEarning() {
           </button>
           <div className="flex-1">
             <label className="block mb-1 text-sm font-medium">
-  {t?.("earnings.photo._") || "Earning photo (optional)"}
-</label>
+              {t?.("earnings.photo._") || "Earning photo (optional)"}
+            </label>
             <input ref={photoInputRef} type="file" accept="image/*" onChange={(e) => handlePhotoPick(e.target.files?.[0] || null)} className="hidden" />
             <div className="flex items-center gap-2">
               <Button type="button" onClick={openPhotoPicker} className="h-11 rounded-md px-4">
@@ -277,11 +295,14 @@ export default function CreateEarning() {
                 </Button>
               )}
             </div>
-            <p className="text-xs opacity-70 mt-2">{t?.("earnings.photoNote") || "Stored on the earning header. Instances can have their own photos later."}</p>
+            <p className="text-xs opacity-70 mt-2">
+              {t?.("earnings.photoNote") || "Stored on the earning header. Instances can have their own photos later."}
+            </p>
           </div>
         </div>
       </Card>
 
+      {/* Form principal  */}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -319,6 +340,7 @@ export default function CreateEarning() {
         </Button>
       </div>
 
+      {/* Lightbox */}
       {lightboxOpen && photoPreviewUrl && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center" onClick={() => setLightboxOpen(false)}>
           <img src={photoPreviewUrl} alt={t?.("receipt.modalAlt") || "Image (enlarged)"} className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()}/>

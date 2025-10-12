@@ -10,7 +10,7 @@ function Welcome() {
   const { isAuthenticated } = useContext(AuthContext);
   const { t } = useLanguage();
 
-  if (isAuthenticated) return <Navigate to="/Dashboard" replace />;
+  if (isAuthenticated) return <Navigate to="/ListWallets" replace />;
 
   const c = theme?.colors || {};
 

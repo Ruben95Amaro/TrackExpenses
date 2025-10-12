@@ -1,4 +1,3 @@
-// src/layout/AppShell/TopBar.jsx
 import React, { useState, useEffect, useMemo, useContext } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -17,9 +16,7 @@ import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 
 export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
-  // Este menu (hamburger + dropdown) **só** aparece em < md
   const [mobileOpen, setMobileOpen] = useState(false);
-
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const { t } = useLanguage();
   const { auth, roles: ctxRoles, isAuthenticated } =
@@ -37,7 +34,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
   const iconCol = c.primary?.main || "#5B5BF5";
   const topBorder = c.menu?.border || "rgba(255,255,255,0.08)";
 
-  // fechar menu no ESC + bloquear scroll quando aberto
+  /* ESC fecha menu */
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && setMobileOpen(false);
     document.addEventListener("keydown", onKey);
@@ -48,7 +45,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
     };
   }, [mobileOpen]);
 
-  // roles
+  /* roles helpers */
   const userRoles = useMemo(() => {
     if (Array.isArray(ctxRoles)) return ctxRoles;
     if (typeof ctxRoles === "string")
@@ -90,7 +87,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
     return g;
   }, [menuItems, userRoles]);
 
-  // perfil (nome/foto)
+  /* profile */
   const [profile, setProfile] = useState({
     firstName: "",
     lastName: "",
@@ -147,12 +144,6 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
     return () => controller.abort();
   }, [auth?.Email, auth?.email]);
 
-  useEffect(() => {
-    const newPath = auth?.path || auth?.Path;
-    if (!newPath) return;
-    setProfile((p) => ({ ...p, avatarUrl: withVersion(newPath) }));
-  }, [auth?.path, auth?.Path]);
-
   const initials = useMemo(() => {
     const f = profile?.firstName?.[0] || "";
     const l = profile?.lastName?.[0] || "";
@@ -200,43 +191,95 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
           "0 1px 0 rgba(255,255,255,0.08) inset, 0 4px 12px rgba(0,0,0,0.18), 0 4px 16px rgba(255,255,255,0.25)",
       }}
     >
-      <div className="w-full px-4 sm:px-6 lg:px-8 flex items-center h-16">
-        {/* HAMBURGUER SÓ EM < md (quando a SideBar está escondida) */}
+      <div className="relative w-full h-16 flex items-center px-4 sm:px-6 lg:px-8">
+        {/* Hamburguer (visível até <xl) */}
         <button
-          className="md:hidden p-2 rounded-lg transition-colors"
+          className="xl:hidden p-2 rounded-lg transition-colors"
           style={{ color: topText }}
           onClick={() => setMobileOpen((v) => !v)}
-          aria-label="Open menu"
+          aria-label="Abrir menu"
+          aria-expanded={mobileOpen}
         >
           <MenuIcon className="h-6 w-6" />
         </button>
 
-        {/* TÍTULO (TopBar está sempre visível) */}
-        <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
+        {/* TÍTULO */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3 select-none">
+          {/* mobile trigger */}
+          <button
+            type="button"
+            className="flex xl:hidden items-center gap-3 pointer-events-auto"
+            onClick={() => setMobileOpen((v) => !v)}
+            aria-label="Abrir menu"
+            aria-expanded={mobileOpen}
+          >
+            <Wallet className="h-6 w-6 shrink-0" />
+            <span className="font-bold text-base whitespace-nowrap">
+              {title}
+            </span>
+          </button>
+
+          {/* desktop link */}
           <Link
             to="/Welcome"
-            className="flex items-center gap-2 pointer-events-auto"
+            className="hidden xl:flex items-center gap-3 pointer-events-auto"
           >
-            <Wallet className="h-6 w-6" />
-            <span className="font-bold text-xl">{title}</span>
+            <Wallet className="h-6 w-6 shrink-0" />
+            <span className="font-bold text-base whitespace-nowrap">
+              {title}
+            </span>
           </Link>
         </div>
 
-        {/* LADO DIREITO DESLIGADO EM ≥ md (não mostra botões quando Sidebar está visível) */}
-        <div className="ml-auto flex md:hidden items-center gap-3">
-          {/* Mantemos vazio aqui — os botões ficam só no dropdown mobile */}
-        </div>
+        {/* BOTÕES DIREITA */}
+        {!isAuthenticated && (
+          <div className="hidden xl:flex items-center gap-4 ml-auto">
+            <button
+              onClick={toggleTheme}
+              className="h-10 px-5 rounded-full border text-sm font-medium inline-flex items-center justify-center transition duration-200 ease-out hover:shadow-md active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              style={{
+                borderColor: ddBorder,
+                color: topText,
+                backgroundColor: "transparent",
+              }}
+            >
+              {isDarkMode ? "Dark" : "Light"}
+            </button>
+
+            <Link
+              to="/register"
+              className="h-10 px-5 rounded-full border text-sm font-medium inline-flex items-center justify-center gap-2 transition duration-200 ease-out hover:shadow-md active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              style={{
+                borderColor: ddBorder,
+                color: topText,
+                backgroundColor: "transparent",
+              }}
+            >
+              <UserPlus className="h-4 w-4" />
+              SignUp
+            </Link>
+
+            <Link
+              to="/login"
+              className="h-10 px-5 rounded-full text-sm font-medium inline-flex items-center justify-center gap-2 transition duration-200 ease-out hover:brightness-110 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              style={{ backgroundColor: iconCol, color: "#fff" }}
+            >
+              <LogIn className="h-4 w-4" />
+              Login
+            </Link>
+          </div>
+        )}
       </div>
 
-      {/* DROPDOWN MOBILE (apenas quando a SideBar está oculta, < md) */}
+      {/* MENU MOBILE */}
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-[205] bg-black/40 md:hidden"
+            className="fixed inset-0 z-[205] bg-black/40 xl:hidden"
             onClick={() => setMobileOpen(false)}
           />
           <div
-            className="md:hidden fixed top-16 left-0 right-0 z-[210] max-h-[70vh] overflow-auto rounded-b-2xl ring-1 shadow-2xl"
+            className="xl:hidden fixed top-16 left-0 right-0 z-[210] max-h-[70vh] overflow-auto rounded-b-2xl ring-1 shadow-2xl"
             style={{ backgroundColor: ddBg, borderColor: ddBorder }}
           >
             {!isAuthenticated ? (
@@ -246,7 +289,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
                     toggleTheme();
                     setMobileOpen(false);
                   }}
-                  className="w-48 h-12 rounded-full border text-[0.95rem] font-medium flex items-center justify-center"
+                  className="w-48 h-12 rounded-full border text-sm font-medium flex items-center justify-center transition duration-200 ease-out hover:shadow-md active:scale-[.97]"
                   style={{
                     borderColor: ddBorder,
                     color: ddText,
@@ -259,7 +302,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
                 <Link
                   to="/register"
                   onClick={() => setMobileOpen(false)}
-                  className="w-48 h-12 rounded-full border text-[0.95rem] font-medium flex items-center justify-center gap-2"
+                  className="w-48 h-12 rounded-full border text-sm font-medium flex items-center justify-center gap-2 transition duration-200 ease-out hover:shadow-md active:scale-[.97]"
                   style={{
                     borderColor: ddBorder,
                     color: ddText,
@@ -273,7 +316,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
                 <Link
                   to="/login"
                   onClick={() => setMobileOpen(false)}
-                  className="w-48 h-12 rounded-full text-[0.95rem] font-semibold flex items-center justify-center gap-2"
+                  className="w-48 h-12 rounded-full text-sm font-medium flex items-center justify-center gap-2 transition duration-200 ease-out hover:brightness-110 active:scale-[.97]"
                   style={{ backgroundColor: iconCol, color: "#fff" }}
                 >
                   <LogIn className="h-4 w-4" />
@@ -282,96 +325,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
               </div>
             ) : (
               <>
-                <Section title={t?.("common.admin")} items={groups.ADMIN} />
-                <Section
-                  title={t?.("common.adminGroup")}
-                  items={groups.GROUPADMIN}
-                />
-                <Section title={t?.("common.premium")} items={groups.PREMIUM} />
-                <Section
-                  title={t?.("common.groupMember")}
-                  items={groups.GROUP}
-                />
                 <Section title={t?.("common.user")} items={groups.USER} />
-
-                <div
-                  className="w-full px-2 py-1.5 text-sm font-bold uppercase text-center"
-                  style={{ color: ddMuted }}
-                >
-                  {t?.("common.account") ?? "Account"}
-                </div>
-
-                <Link
-                  to="/Premium"
-                  className="flex justify-center items-center gap-2 px-4 py-3 border-t"
-                  style={{ borderColor: ddBorder, color: ddText }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <DollarSign className="h-5 w-5" />{" "}
-                  {t?.("common.premium") ?? "Premium"}
-                </Link>
-
-                <Link
-                  to="/Settings"
-                  className="flex justify-center items-center gap-2 px-4 py-3 border-t"
-                  style={{ borderColor: ddBorder, color: ddText }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <Settings className="h-5 w-5" />{" "}
-                  {t?.("common.settings") ?? "Settings"}
-                </Link>
-
-                <button
-                  className="w-full flex justify-center items-center gap-2 px-4 py-3 border-t"
-                  style={{ borderColor: ddBorder, color: ddText }}
-                  onClick={() => {
-                    setMobileOpen(false);
-                    logout();
-                  }}
-                >
-                  <LogOut className="h-5 w-5" />{" "}
-                  {t?.("common.logout") ?? "Logout"}
-                </button>
-
-                <Link
-                  to="/Profile"
-                  className="flex justify-center items-center gap-3 px-4 py-3 border-t"
-                  style={{ borderColor: ddBorder, color: ddText }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  <div className="h-9 w-9 rounded-full overflow-hidden ring-2 ring-gray-600">
-                    {profile.avatarUrl ? (
-                      <img
-                        key={profile.avatarUrl}
-                        src={profile.avatarUrl}
-                        alt="avatar"
-                        className="h-full w-full object-cover"
-                        onError={() =>
-                          setProfile((p) => ({ ...p, avatarUrl: "" }))
-                        }
-                      />
-                    ) : (
-                      <div
-                        className="h-full w-full flex items-center justify-center font-semibold"
-                        style={{ backgroundColor: "#6D28D9", color: "#fff" }}
-                      >
-                        {initials}
-                      </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <div className="text-sm font-semibold truncate">
-                      {profile.firstName && profile.lastName
-                        ? `${profile.firstName} ${profile.lastName}`
-                        : auth?.preferred_username ||
-                          profile.email ||
-                          "Profile"}
-                    </div>
-                    <div className="text-xs truncate" style={{ color: ddMuted }}>
-                      {profile.email}
-                    </div>
-                  </div>
-                </Link>
               </>
             )}
           </div>

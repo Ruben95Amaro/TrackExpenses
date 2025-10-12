@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Wallet as WalletIcon } from "lucide-react";
 
 import Title from "../../components/Titles/TitlePage";
@@ -9,7 +9,6 @@ import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import { useRequireWallet } from "../../services/Authentication/useRequireWallet";
 
 import EvolutionChart from "../../components/Charts/EvolutionChart";
-import StatusStackedBar from "../../components/Charts/StatusStackedBar";
 import CategoriesPies from "../../components/Charts/CategoriesPies";
 import DashboardFilterBar from "../../components/Filters/DashboardFilterBar";
 
@@ -18,7 +17,6 @@ const firstDayOfMonth = (d = new Date()) => new Date(d.getFullYear(), d.getMonth
 const lastDayOfMonth  = (d = new Date()) => new Date(d.getFullYear(), d.getMonth() + 1, 0);
 const A = (x) => (Array.isArray(x) ? x : x?.$values ? x.$values : []);
 const N = (v) => (v == null ? 0 : Number(v));
-const pct = (p, t) => (N(t) > 0 ? N(p) / N(t) : 0);
 const fmtCurrency = (v, cur = "EUR") =>
   new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(N(v));
 
@@ -40,15 +38,12 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState(null);
   const [series, setSeries] = useState([]);
-  const [statusIncome, setStatusIncome] = useState([]);
-  const [statusExpense, setStatusExpense] = useState([]);
   const [catsIncome, setCatsIncome] = useState([]);
   const [catsExpense, setCatsExpense] = useState([]);
   const [currency, setCurrency] = useState("EUR");
   const [error, setError] = useState("");
 
   const c = theme.colors;
-  const primary = c?.primary?.main || "#3b82f6";
   const success = c?.success?.main || "#16a34a";
   const danger  = c?.error?.main   || "#ef4444";
   const border  = c?.secondary?.light || "#334155";
@@ -57,18 +52,24 @@ export default function Dashboard() {
   const showIncome  = flt.type === "both" || flt.type === "income";
   const showExpense = flt.type === "both" || flt.type === "expense";
 
+  // Carrega carteiras e define wallet primária
   useEffect(() => {
     let cancel = false;
     (async () => {
       try {
-        const r = await apiCall.get("wallets", { params: { includeArchived: false }, validateStatus: () => true });
+        const r = await apiCall.get("wallets", {
+          params: { includeArchived: false },
+          validateStatus: () => true,
+        });
         const list = (r?.status >= 200 && r?.status < 300) ? A(r?.data) : [];
         if (cancel) return;
         setWallets(list);
         const primaryW = list.find((w) => w.isPrimary) || list[0];
         setFlt((p) => ({ ...p, walletId: primaryW?.id || "" }));
         if (list[0]?.currency) setCurrency(list[0].currency);
-      } catch { if (!cancel) setWallets([]); }
+      } catch {
+        if (!cancel) setWallets([]);
+      }
     })();
     return () => { cancel = true; };
   }, []);
@@ -84,20 +85,19 @@ export default function Dashboard() {
     if (flt.walletId) params.walletId = flt.walletId;
 
     try {
-      const [sumRes, tsRes, stIncRes, stExpRes, ciRes, ceRes] =
-        await Promise.all([
-          apiCall.get("Dashboard/Summary", { params }),
-          apiCall.get("Dashboard/TimeSeries", { params }),
-          apiCall.get("Dashboard/StatusSplit",  { params: { ...params, type: "income",  groupBy: flt.granularity } }),
-          apiCall.get("Dashboard/StatusSplit",  { params: { ...params, type: "expense", groupBy: flt.granularity } }),
-          apiCall.get("Dashboard/Categories",   { params: { ...params, type: "income" } }),
-          apiCall.get("Dashboard/Categories",   { params: { ...params, type: "expense" } }),
-        ]);
+      const [sumRes, tsRes, ciRes, ceRes] = await Promise.all([
+        apiCall.get("Dashboard/Summary", { params }),
+        apiCall.get("Dashboard/TimeSeries", { params }),
+        apiCall.get("Dashboard/Categories", { params: { ...params, type: "income" } }),
+        apiCall.get("Dashboard/Categories", { params: { ...params, type: "expense" } }),
+      ]);
 
       setSummary(sumRes?.data ?? null);
-      setSeries(A(tsRes?.data).map((r) => ({ label: r?.label ?? "", income: N(r?.income), expense: N(r?.expense) })));
-      setStatusIncome(A(stIncRes?.data));
-      setStatusExpense(A(stExpRes?.data));
+      setSeries(A(tsRes?.data).map((r) => ({
+        label: r?.label ?? "",
+        income: N(r?.income),
+        expense: N(r?.expense),
+      })));
       setCatsIncome(A(ciRes?.data).map((x) => ({ category: x?.category ?? "—", amount: N(x?.amount) })));
       setCatsExpense(A(ceRes?.data).map((x) => ({ category: x?.category ?? "—", amount: N(x?.amount) })));
       if (sumRes?.data?.currency) setCurrency(sumRes.data.currency);
@@ -107,6 +107,15 @@ export default function Dashboard() {
       setLoading(false);
     }
   };
+
+  // Pesquisa inicial automática
+  const didInitialSearch = useRef(false);
+  useEffect(() => {
+    if (!didInitialSearch.current && flt.walletId) {
+      didInitialSearch.current = true;
+      doSearch();
+    }
+  }, [flt.walletId]);
 
   const clearFilters = () => {
     setFlt((p) => ({
@@ -118,46 +127,11 @@ export default function Dashboard() {
     }));
   };
 
-  const statusMerged = useMemo(() => {
-    const map = new Map();
-    A(statusIncome).forEach((i) => {
-      const k = i.label ?? "";
-      map.set(k, {
-        label: k,
-        incomeReceived: pct(i.received, i.expected),
-        incomePending:  pct(i.pending,  i.expected),
-        expensesPaid: 0,
-        expensesPending: 0,
-      });
-    });
-    A(statusExpense).forEach((e) => {
-      const k = e.label ?? "";
-      const row = map.get(k) || { label: k, incomeReceived: 0, incomePending: 0, expensesPaid: 0, expensesPending: 0 };
-      row.expensesPaid    = pct(e.paid,    e.expected);
-      row.expensesPending = pct(e.pending, e.expected);
-      map.set(k, row);
-    });
-    return Array.from(map.values());
-  }, [statusIncome, statusExpense]);
-
   return (
     <div className="space-y-6 min-h-screen">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title text={t("dashboard.title")} subText={t("dashboard.subtitle")} />
       </div>
-
-      <DashboardFilterBar
-        value={flt}
-        onChange={(patch) => setFlt((p) => ({ ...p, ...patch }))}
-        onSearch={doSearch}
-        onClear={clearFilters}
-        loading={loading}
-        options={{ wallets }}
-        t={t}
-        tone={{ bg, border }}
-        defaultOpen={true}
-        hideToggle={false}
-      />
 
       {/* KPIs */}
       {summary && (
@@ -196,60 +170,57 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Evolução */}
-      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
-        <div className="mb-3 font-medium">{t("dashboard.charts.evolution")}</div>
-        <EvolutionChart
-          data={series}
-          currency={currency}
-          colors={{ grid: border, text: theme.colors.text?.secondary, income: success, expense: danger }}
-          showIncome={showIncome}
-          showExpense={showExpense}
-          bg={bg}
-          border={border}
-          noHoverHighlight
-          tooltipSize="md"
-        />
-      </div>
+      {/* Filtros */}
+      <DashboardFilterBar
+        value={flt || {}}
+        onChange={(patch) => setFlt((p) => ({ ...p, ...patch }))}
+        onSearch={doSearch}
+        onClear={clearFilters}
+        loading={loading}
+        options={{ wallets: wallets || [] }}
+        t={t}
+        showToggle
+        defaultOpen={false}
+      />
 
-      {/* Status */}
-      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
-        <div className="mb-3 font-medium">{t("dashboard.charts.status")}</div>
-        <StatusStackedBar
-          data={statusMerged}
-          t={t}
-          colors={{
-            text: theme.colors.text?.secondary,
-            income: success,
-            incomePending: primary,
-            expense: danger,
-            expensePending: "#94a3b8",
-          }}
-          showIncome={showIncome}
-          showExpense={showExpense}
-          bg={bg}
-          border={border}
-          noHoverHighlight
-          tooltipSize="md"
-        />
-      </div>
+      {/* Gráfico de evolução */}
+      {summary && (
+        <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
+          <div className="mb-3 font-medium">{t("dashboard.charts.evolution")}</div>
+          <EvolutionChart
+            data={series}
+            currency={currency}
+            colors={{ grid: border, text: theme.colors.text?.secondary, income: success, expense: danger }}
+            showIncome={showIncome}
+            showExpense={showExpense}
+            bg={bg}
+            border={border}
+          />
+        </div>
+      )}
 
-      {/* Categorias */}
-      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
-        <div className="mb-3 font-medium">{t("dashboard.charts.categories")}</div>
-        <CategoriesPies
-          incomeData={catsIncome}
-          expenseData={catsExpense}
-          currency={currency}
-          titles={{ income: t("dashboard.charts.income"), expense: t("dashboard.charts.expenses") }}
-          themeColors={{ bg, border, text: theme.colors.text?.primary }}
-          tooltipSize="md"
-        />
-      </div>
+      {/* Gráfico de categorias */}
+      {summary && (
+        <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
+          <div className="mb-3 font-medium">{t("dashboard.charts.categories")}</div>
+          <CategoriesPies
+            incomeData={catsIncome}
+            expenseData={catsExpense}
+            currency={currency}
+            titles={{
+              income: t("dashboard.charts.income"),
+              expense: t("dashboard.charts.expenses"),
+            }}
+            themeColors={{ bg, border, text: theme.colors.text?.primary }}
+          />
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl p-4 border" style={{ borderColor: danger, background: bg }}>
-          <div className="font-medium" style={{ color: danger }}>{t("dashboard.error_title")}</div>
+          <div className="font-medium" style={{ color: danger }}>
+            {t("dashboard.error_title")}
+          </div>
           <div className="text-sm opacity-80">{error}</div>
         </div>
       )}
