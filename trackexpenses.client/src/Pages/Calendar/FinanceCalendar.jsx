@@ -1,11 +1,19 @@
-import React, {
-  useEffect,
-  useMemo,
-  useState,
-  useContext,
-  useCallback,
-  useRef,
-} from "react";
+
+import React, { useEffect, useMemo, useState, useContext } from "react";
+import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import {
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  isSameDay,
+  startOfMonth,
+  endOfMonth,
+  addDays,
+} from "date-fns";
+import { pt } from "date-fns/locale";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+
 import Title from "../../components/Titles/TitlePage";
 import GenericFilter from "../../components/Tables/GenericFilter";
 import { useTheme } from "../../styles/Theme/Theme";
@@ -13,130 +21,461 @@ import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 
-const EP_E_LIST = "Expenses/ListExpenses";   
-const EP_R_LIST = "Earnings/ListEarnings";   
+/* ==================== Endpoints & helpers ==================== */
+const EP_E_LIST = "Expenses/ListExpenses";
+const EP_R_LIST = "Earnings/ListEarnings";
 const EP_WALLETS = "/wallets?includeArchived=true";
 
 const unwrap = (v) => (Array.isArray(v) ? v : v?.$values ?? []);
 const N = (v) => (v ?? "").toString().trim();
-const keyOf = (d) => d.toISOString().slice(0, 10); 
-const normalizeDate = (d) => {
-  const x = new Date(d);
-  return new Date(x.getFullYear(), x.getMonth(), x.getDate()); 
+const money = (n) =>
+  Number(n || 0).toLocaleString("pt-PT", { style: "currency", currency: "EUR" });
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek: () => startOfWeek(new Date(), { weekStartsOn: 1 }),
+  getDay,
+  locales: { pt },
+});
+const tt = (t, key, fallback) => {
+  const v = t?.(key);
+  return !v || v === key ? fallback : v;
 };
 
+/* ==================== Responsividade ==================== */
+function useIsMobile(bp = 520) {
+  const [mobile, setMobile] = useState(
+    typeof window !== "undefined"
+      ? window.matchMedia(`(max-width:${bp}px)`).matches
+      : false
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia(`(max-width:${bp}px)`);
+    const handler = (e) => setMobile(e.matches);
+    if (mql.addEventListener) mql.addEventListener("change", handler);
+    else mql.addListener(handler);
+    return () => {
+      if (mql.removeEventListener) mql.removeEventListener("change", handler);
+      else mql.removeListener(handler);
+    };
+  }, [bp]);
+  return mobile;
+}
+
+/* ==================== Dots centrados na célula ==================== */
+function DayCellIndicators({ children, eventsForDay, colors }) {
+  const hasExpense = eventsForDay.some((e) => e.kind === "expense");
+  const hasEarning = eventsForDay.some((e) => e.kind === "earning");
+
+  const size = "clamp(10px, 0.9vw, 14px)";
+  const Dot = ({ bg }) => (
+    <span
+      aria-hidden
+      style={{
+        width: size,
+        height: size,
+        background: bg,
+        borderRadius: "9999px",
+        boxShadow: `0 0 0 2px ${colors.dotRingInset} inset, 0 0 0 2px ${colors.dotRing}`,
+      }}
+    />
+  );
+
+  return (
+    <div className="relative h-full w-full">
+      {children}
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center gap-1.5"
+        style={{ transform: "translateY(-4px)" }}
+      >
+        {hasExpense && <Dot bg={colors.expenseDot} />}
+        {hasEarning && <Dot bg={colors.incomeDot} />}
+      </div>
+    </div>
+  );
+}
+
+/* ==================== Drawer (lista do dia) ==================== */
+function DayDrawer({ open, onClose, date, items, colors, t }) {
+  if (!open) return null;
+  const expenses = items.filter((x) => x.kind === "expense");
+  const earnings = items.filter((x) => x.kind === "earning");
+  const total = (list) => list.reduce((s, x) => s + Number(x.amount || 0), 0);
+
+  const Header = () => (
+    <div
+      className="flex items-center justify-between rounded-t-2xl px-4 md:px-5 py-3 md:py-4"
+      style={{
+        background: colors.headerBarBg,
+        color: colors.headerTitle,
+        borderBottom: `1px solid ${colors.borderHex}`,
+      }}
+    >
+      <h3 className="font-semibold text-[clamp(1rem,0.9rem+0.5vw,1.125rem)]">
+        {format(date, "d 'de' LLLL 'de' yyyy", { locale: pt })}
+      </h3>
+      <button
+        onClick={onClose}
+        className="rounded-lg px-3 py-2 text-sm font-semibold shadow-sm"
+        style={{
+          background: colors.primary,
+          color: colors.onPrimary,
+          border: `1px solid ${colors.borderHex}`,
+        }}
+      >
+        {tt(t, "common.close", "Fechar")}
+      </button>
+    </div>
+  );
+
+  const Section = ({ title, color, border, list, emptyText }) => (
+    <div className="mb-4">
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-3 w-3 rounded-full" style={{ background: color }} />
+          <h4 className="font-semibold" style={{ color: colors.text }}>
+            {title}
+          </h4>
+        </div>
+        {list.length > 0 && (
+          <span className="tabular-nums font-semibold" style={{ color: colors.text }}>
+            {money(total(list))}
+          </span>
+        )}
+      </div>
+      {list.length === 0 ? (
+        <div className="text-sm" style={{ color: colors.textSoft }}>
+          {emptyText}
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {list.map((e) => (
+            <li
+              key={e.id}
+              className="flex items-center justify-between rounded-xl px-3 py-2"
+              style={{
+                background: colors.rowBg,
+                color: colors.text,
+                border: `1px solid ${border}`,
+              }}
+            >
+              <span className="truncate">{N(e.title) || title}</span>
+              <span className="tabular-nums font-semibold">{money(e.amount)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center md:items-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div
+        className="relative max-h-[86vh] w-[min(820px,96vw)] overflow-auto rounded-2xl shadow-2xl"
+        style={{ background: colors.drawerBg, border: `2px solid ${colors.borderHex}` }}
+      >
+        <Header />
+        <div className="rounded-b-2xl p-4 md:p-6" style={{ background: colors.drawerInner }}>
+          <Section
+            title={tt(t, "expenses.title", "Despesas")}
+            color={colors.expenseDot}
+            border={colors.expenseSoftBorder}
+            list={expenses}
+            emptyText={tt(t, "expenses.none", "Sem despesas neste dia.")}
+          />
+          <Section
+            title={tt(t, "earnings.title", "Receitas")}
+            color={colors.incomeDot}
+            border={colors.incomeSoftBorder}
+            list={earnings}
+            emptyText={tt(t, "earnings.none", "Sem receitas neste dia.")}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ==================== Toolbars ==================== */
+function ToolbarDesktop({ date, onNavigate, colors, t }) {
+  const monthIdx = date.getMonth();
+  const year = date.getFullYear();
+  const months = Array.from({ length: 12 }, (_, i) =>
+    new Date(2020, i, 1).toLocaleDateString("pt-PT", { month: "long" })
+  );
+  const years = Array.from({ length: 11 }, (_, i) => year - 5 + i);
+  const jumpTo = (m, y) => onNavigate("DATE", new Date(y, m, 1));
+
+  return (
+    <div
+      className="flex flex-wrap items-center justify-between gap-3 px-3 sm:px-4 py-3 mb-4 rounded-xl"
+      style={{ background: colors.headerBarBg, border: `1px solid ${colors.borderHex}` }}
+    >
+      {/* esquerda */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onNavigate("TODAY")}
+          className="h-10 px-3 rounded-xl font-semibold whitespace-nowrap"
+          style={{ color: colors.headerTitle, border: `1px solid ${colors.borderHex}` }}
+        >
+          {tt(t, "common.today", "Hoje")}
+        </button>
+
+        {/* grupo com separador vertical full-height */}
+        <div
+          className="flex items-center rounded-xl overflow-hidden"
+          style={{ border: `1px solid ${colors.borderHex}` }}
+        >
+          <button
+            onClick={() => onNavigate("PREV")}
+            className="h-10 px-3"
+            style={{ color: colors.headerTitle }}
+            aria-label="Anterior"
+          >
+            ‹
+          </button>
+
+          {/* separador: ocupa 100% graças a self-stretch */}
+          <span
+            className="w-px self-stretch"
+            style={{ background: colors.borderHex, opacity: 0.85 }}
+            aria-hidden
+          />
+
+          <button
+            onClick={() => onNavigate("NEXT")}
+            className="h-10 px-3"
+            style={{ color: colors.headerTitle }}
+            aria-label="Seguinte"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      {/* centro */}
+      <div
+        className="text-lg font-extrabold tracking-wide uppercase text-center flex-grow text-nowrap"
+        style={{ color: colors.headerTitle, minWidth: 120 }}
+      >
+        {format(date, "LLLL yyyy", { locale: pt })}
+      </div>
+
+      {/* direita */}
+      <div className="flex items-center gap-2">
+        <select
+          value={monthIdx}
+          onChange={(e) => jumpTo(Number(e.target.value), year)}
+          className="h-10 max-w-[140px] px-3 rounded-xl text-sm appearance-none"
+          style={{ background: "transparent", color: colors.headerTitle, border: `1px solid ${colors.borderHex}` }}
+          aria-label="Mês"
+        >
+          {months.map((m, i) => (
+            <option key={i} value={i} style={{ background: "#0f172a", color: "#E3EDFF" }}>
+              {m[0].toUpperCase() + m.slice(1)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={year}
+          onChange={(e) => jumpTo(monthIdx, Number(e.target.value))}
+          className="h-10 max-w-[96px] px-3 rounded-xl text-sm appearance-none"
+          style={{ background: "transparent", color: colors.headerTitle, border: `1px solid ${colors.borderHex}` }}
+          aria-label="Ano"
+        >
+          {years.map((y) => (
+            <option key={y} value={y} style={{ background: "#0f172a", color: "#E3EDFF" }}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function ToolbarMobile({ date, setDate, colors, t }) {
+  return (
+    <div className="sm:hidden mb-3">
+      <div
+        className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl"
+        style={{ background: colors.headerBarBg, border: `1px solid ${colors.borderHex}` }}
+      >
+        <button
+          onClick={() => setDate(new Date())}
+          className="h-11 px-3 rounded-xl font-semibold"
+          style={{ color: colors.headerTitle, border: `1px solid ${colors.borderHex}` }}
+        >
+          {tt(t, "common.today", "Hoje")}
+        </button>
+
+        <div className="flex items-center rounded-xl overflow-hidden" style={{ border: `1px solid ${colors.borderHex}` }}>
+          <button
+            onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))}
+            className="h-11 px-3"
+            style={{ color: colors.headerTitle }}
+          >
+            ‹
+          </button>
+          <span className="w-px self-stretch" style={{ background: colors.borderHex, opacity: 0.85 }} />
+          <button
+            onClick={() => setDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))}
+            className="h-11 px-3"
+            style={{ color: colors.headerTitle }}
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        <select
+          value={date.getMonth()}
+          onChange={(e) => setDate(new Date(date.getFullYear(), Number(e.target.value), 1))}
+          className="h-11 px-3 rounded-xl text-sm w-full appearance-none"
+          style={{ background: "transparent", color: colors.headerTitle, border: `1px solid ${colors.borderHex}` }}
+          aria-label="Mês"
+        >
+          {Array.from({ length: 12 }, (_, i) => (
+            <option key={i} value={i} style={{ background: "#0f172a", color: "#E3EDFF" }}>
+              {new Date(2020, i, 1)
+                .toLocaleDateString("pt-PT", { month: "long" })
+                .replace(/^\w/, (c) => c.toUpperCase())}
+            </option>
+          ))}
+        </select>
+        <select
+          value={date.getFullYear()}
+          onChange={(e) => setDate(new Date(Number(e.target.value), date.getMonth(), 1))}
+          className="h-11 px-3 rounded-xl text-sm w-full appearance-none"
+          style={{ background: "transparent", color: colors.headerTitle, border: `1px solid ${colors.borderHex}` }}
+          aria-label="Ano"
+        >
+          {Array.from({ length: 11 }, (_, i) => date.getFullYear() - 5 + i).map((y) => (
+            <option key={y} value={y} style={{ background: "#0f172a", color: "#E3EDFF" }}>
+              {y}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+/* ==================== Lista mensal (modo mobile) ==================== */
+function MobileMonthList({ date, getEventsFor, colors, onPickDay }) {
+  const start = startOfMonth(date);
+  const end = endOfMonth(date);
+  const days = [];
+  for (let d = start; d <= end; d = addDays(d, 1)) days.push(d);
+
+  return (
+    <div className="divide-y" style={{ borderTop: `1px solid ${colors.borderHex}` }}>
+      {days.map((d) => {
+        const items = getEventsFor(d);
+        const sumExp = items.filter((i) => i.kind === "expense").reduce((s, x) => s + (x.amount || 0), 0);
+        const sumInc = items.filter((i) => i.kind === "earning").reduce((s, x) => s + (x.amount || 0), 0);
+        const isToday = isSameDay(new Date(), d);
+
+        return (
+          <button
+            key={d.toISOString()}
+            onClick={() => onPickDay(d)}
+            className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+            style={{
+              background: isToday ? colors.todayBg : "transparent",
+              boxShadow: isToday ? `inset 0 0 0 2px ${colors.todayRing}` : "none",
+            }}
+          >
+            <div className="min-w-0">
+              <div className="text-[13px] uppercase opacity-80">{format(d, "EEEE", { locale: pt })}</div>
+              <div className="text-[clamp(18px,1.1rem,22px)] font-semibold">{format(d, "dd", { locale: pt })}</div>
+            </div>
+            <div className="ml-auto flex items-center gap-4 text-sm">
+              <div className="inline-flex items-center gap-1">
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: colors.expenseDot }} />
+                <span className="tabular-nums">{sumExp > 0 ? money(sumExp) : "-"}</span>
+              </div>
+              <div className="inline-flex items-center gap-1">
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: colors.incomeDot }} />
+                <span className="tabular-nums">{sumInc > 0 ? money(sumInc) : "-"}</span>
+              </div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ==================== Página ==================== */
 export default function FinanceCalendar() {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { auth } = useContext(AuthContext) || {};
   const isLogged = Boolean(auth?.Email);
+  const isMobile = useIsMobile(520);
 
-  const isDark =
-    theme?.mode === "dark" ||
-    theme?.isDark === true ||
-    theme?.palette?.mode === "dark";
+  // Paleta unificada
+  const colors = {
+    headerBarBg: "#1b2741",
+    headerTitle: "#E3EDFF",
+    borderHex: "#2563EB",
 
-  const today = normalizeDate(new Date());
-  const [view, setView] = useState({ y: today.getFullYear(), m: today.getMonth() });
-  const [selectedDate, setSelectedDate] = useState(null);
+    drawerBg: "#1b2741",
+    drawerInner: "#1d2f54",
+
+    text: "#EAF2FF",
+    textSoft: "#C7D3EA",
+    rowBg: "#24345c",
+    headerBg: "#1C2942",
+    headerText: "#E9F0FF",
+
+    todayBg: "rgba(93,127,255,0.28)",
+    todayRing: "#4D7CFF",
+    offRangeBg: "#1a2336",
+    offRangeText: "#9fb0d4",
+
+    expenseDot: "#ef4444",
+    incomeDot: "#22c55e",
+    expenseSoftBorder: "#A53333",
+    incomeSoftBorder: "#2A7B4A",
+    dotRing: "rgba(255,255,255,.22)",
+    dotRingInset: "rgba(0,0,0,.22)",
+
+    primary: "#2563EB",
+    onPrimary: "#fff",
+  };
 
   const [wallets, setWallets] = useState([]);
   const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [flt, setFlt] = useState({ wallet: "all", category: "all", status: "all", kind: "all" });
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  const [flt, setFlt] = useState({
-    wallet: "all",
-    category: "all",
-    status: "all",
-    kind: "all",
-  });
-
-  const [isSmall, setIsSmall] = useState(() => window.innerWidth < 768);
-  useEffect(() => {
-    const onResize = () => setIsSmall(window.innerWidth < 768);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-  const perDayLimit = isSmall ? 2 : 4;
-
-  const calWrapRef = useRef(null);
-  useEffect(() => {
-    const el = calWrapRef.current;
-    if (!el) return;
-    let startX = 0;
-    const onTouchStart = (e) => (startX = e.touches[0].clientX);
-    const onTouchEnd = (e) => {
-      const dx = e.changedTouches[0].clientX - startX;
-      if (Math.abs(dx) > 50) {
-        if (dx < 0) goNext();
-        else goPrev();
-      }
-    };
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchend", onTouchEnd, { passive: true });
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchend", onTouchEnd);
-    };
-  }, []); 
-
-  const walletOptions = useMemo(
-    () => [
-      { value: "all", label: t?.("wallets.all") || "All wallets" },
-      ...wallets.map((w) => ({ value: w.Id ?? w.id, label: N(w.Name ?? w.name) })),
-    ],
-    [wallets, t]
-  );
-
-  const monthOptions = useMemo(
-    () =>
-      Array.from({ length: 12 }, (_, i) => ({
-        value: i,
-        label: new Date(2020, i, 1).toLocaleDateString(undefined, { month: "long" }),
-      })),
-    []
-  );
-  const yearOptions = useMemo(() => {
-    const years = new Set(events.map((e) => e.date.getFullYear()));
-    const y = view.y;
-    if (years.size === 0)
-      return Array.from({ length: 7 }, (_, i) => y - 3 + i);
-    const arr = Array.from(years).sort((a, b) => a - b);
-    const min = Math.min(arr[0], y - 3);
-    const max = Math.max(arr[arr.length - 1], y + 3);
-    const out = [];
-    for (let yy = min; yy <= max; yy++) out.push(yy);
-    return out;
-  }, [events, view.y]);
-
+  /* ---- API: carteiras ---- */
   useEffect(() => {
     if (!isLogged) return;
-    let alive = true;
     (async () => {
       try {
         const r = await apiCall.get(EP_WALLETS, { validateStatus: () => true });
-        if (!alive) return;
-        const list =
-          r?.status >= 200 && r?.status < 300
-            ? Array.isArray(r.data)
-              ? r.data
-              : unwrap(r.data)
-            : [];
-        setWallets(list || []);
+        const list = r?.status >= 200 && r?.status < 300 ? unwrap(r.data) : [];
+        setWallets(Array.isArray(list) ? list : []);
       } catch {}
     })();
-    return () => {
-      alive = false;
-    };
   }, [isLogged]);
 
+  /* ---- API: despesas e receitas ---- */
   useEffect(() => {
     if (!isLogged) return;
-    let alive = true;
+    const email = auth?.Email;
+    if (!email) return;
+
     (async () => {
-      const email = auth?.Email || "";
-      if (!email) return;
       setLoading(true);
       try {
         const [expRes, earnRes] = await Promise.all([
@@ -144,375 +483,269 @@ export default function FinanceCalendar() {
           apiCall.get(EP_R_LIST, { params: { userEmail: email }, validateStatus: () => true }),
         ]);
 
-        const expList =
-          expRes?.status >= 200 && expRes?.status < 300
-            ? Array.isArray(expRes.data)
-              ? expRes.data
-              : unwrap(expRes.data)
-            : [];
-        const earnList =
-          earnRes?.status >= 200 && earnRes?.status < 300
-            ? Array.isArray(earnRes.data)
-              ? earnRes.data
-              : unwrap(earnRes.data)
-            : [];
+        const expList = expRes?.status >= 200 && expRes?.status < 300 ? unwrap(expRes.data) : [];
+        const earnList = earnRes?.status >= 200 && earnRes?.status < 300 ? unwrap(earnRes.data) : [];
 
         const evts = [];
 
-        for (const e of expList) {
-          const inst = unwrap(e?.Instances);
-          for (const i of inst) {
+        // Expenses
+        for (const e of (Array.isArray(expList) ? expList : [])) {
+          for (const i of unwrap(e?.Instances)) {
             if (!i?.DueDate) continue;
             evts.push({
               id: i.Id || `${e.Id}:${i.DueDate}`,
-              parentId: e.Id,
-              kind: "expense",
-              title: N(e?.Name) || t?.("expenses.one") || "Expense",
-              category: N(e?.Category) || "-",
-              walletId: e?.WalletId || null,
-              date: normalizeDate(i.DueDate),
+              title: N(e?.Name) || "Despesa",
+              start: new Date(i.DueDate),
+              end: new Date(i.DueDate),
               amount: Number(i?.Value ?? e?.Value ?? 0),
+              kind: "expense",
               paid: Boolean(i?.IsPaid || (i?.PaidAmount && Number(i.PaidAmount) >= Number(i.Value))),
-            });
-          }
-        }
-        for (const e of earnList) {
-          const inst = unwrap(e?.Instances);
-          for (const i of inst) {
-            if (!i?.ExpectedDate) continue;
-            evts.push({
-              id: i.Id || `${e.Id}:${i.ExpectedDate}`,
-              parentId: e.Id,
-              kind: "earning",
-              title: N(e?.Title) || t?.("earnings.one") || "Earning",
-              category: N(e?.Category) || "-",
-              walletId: e?.WalletId || null,
-              date: normalizeDate(i.ExpectedDate),
-              amount: Number(i?.Amount ?? e?.Amount ?? 0),
-              paid: Boolean(i?.IsReceived || i?.ReceivedAtUtc),
+              walletId: e?.WalletId ?? null,
+              category: N(e?.Category) || "",
             });
           }
         }
 
-        if (alive) setEvents(evts);
-      } catch (err) {
-        if (alive) setError(err?.message || "Failed to load calendar");
-      } finally {
-        if (alive) setLoading(false);
-      }
+        // Earnings
+        for (const e of (Array.isArray(earnList) ? earnList : [])) {
+          for (const i of unwrap(e?.Instances)) {
+            if (!i?.ExpectedDate) continue;
+            evts.push({
+              id: i.Id || `${e.Id}:${i.ExpectedDate}`,
+              title: N(e?.Title) || "Receita",
+              start: new Date(i.ExpectedDate),
+              end: new Date(i.ExpectedDate),
+              amount: Number(i?.Amount ?? e?.Amount ?? 0),
+              kind: "earning",
+              paid: Boolean(i?.IsReceived || i?.ReceivedAtUtc),
+              walletId: e?.WalletId ?? null,
+              category: N(e?.Category) || "",
+            });
+          }
+        }
+
+        setEvents(evts);
+      } catch {}
+      finally { setLoading(false); }
     })();
-    return () => {
-      alive = false;
-    };
-  }, [auth?.Email, isLogged, t]);
+  }, [auth?.Email, isLogged]);
+
+  /* ---- Opções de filtro ---- */
+  const walletOptions = useMemo(
+    () => [
+      { value: "all", label: tt(t, "wallets.all", "Todas as carteiras") },
+      ...wallets.map((w) => ({ value: w.Id ?? w.id, label: N(w.Name ?? w.name) })),
+    ],
+    [wallets, t]
+  );
 
   const categoryOptions = useMemo(() => {
     const names = new Set(events.map((x) => N(x.category)).filter(Boolean));
     return [
-      { value: "all", label: t?.("common.all") || "All" },
+      { value: "all", label: tt(t, "common.all", "Todas") },
       ...[...names].sort().map((v) => ({ value: v, label: v })),
     ];
   }, [events, t]);
 
-  const kindOptions = useMemo(
-    () => [
-      { value: "all", label: t?.("common.all") || "All" },
-      { value: "expense", label: t?.("expenses.list") || "Expenses" },
-      { value: "earning", label: t?.("earnings.list") || "Earnings" },
-    ],
-    [t]
-  );
+  const kindOptions = [
+    { value: "all", label: tt(t, "common.all", "Todos") },
+    { value: "expense", label: tt(t, "expenses.title", "Despesas") },
+    { value: "earning", label: tt(t, "earnings.title", "Receitas") },
+  ];
+  const statusOptions = [
+    { value: "all", label: tt(t, "common.allStatus", "Todos") },
+    { value: "paid", label: tt(t, "common.paid", "Pago / Recebido") },
+    { value: "pending", label: tt(t, "common.pending", "Pendente") },
+  ];
 
-  const statusOptions = useMemo(
-    () => [
-      { value: "all", label: t?.("common.all") || "All" },
-      { value: "paid", label: t?.("calendar.status.paid") || "Paid / Received" },
-      { value: "pending", label: t?.("calendar.status.pending") || "Pending" },
-    ],
-    [t]
-  );
-
-  const filtered = useMemo(() => {
-    const w = flt.wallet;
-    const c = (flt.category || "all").toLowerCase();
-    const k = (flt.kind || "all").toLowerCase();
-    const st = (flt.status || "all").toLowerCase();
+  /* ---- Aplicar filtros ---- */
+  const filteredEvents = useMemo(() => {
+    const w = flt.wallet,
+      k = flt.kind,
+      st = flt.status,
+      ccat = (flt.category || "all").toLowerCase();
     return events.filter((ev) => {
       const walletOk = w === "all" || String(ev.walletId) === String(w);
-      const catOk = c === "all" || N(ev.category).toLowerCase() === c;
       const kindOk = k === "all" || ev.kind === k;
       const statusOk = st === "all" || (st === "paid" ? ev.paid : !ev.paid);
-      return walletOk && catOk && kindOk && statusOk;
+      const catOk = ccat === "all" || (ev.category || "").toLowerCase() === ccat;
+      return walletOk && kindOk && statusOk && catOk;
     });
   }, [events, flt]);
 
-  const firstOfMonth = useMemo(() => new Date(view.y, view.m, 1), [view]);
-  const gridStart = useMemo(() => {
-    const d = new Date(firstOfMonth);
-    const day = d.getDay() || 7; // 1..7 Mon..Sun
-    d.setDate(d.getDate() - ((day + 6) % 7)); // voltar à segunda
-    return normalizeDate(d);
-  }, [firstOfMonth]);
-
-  const gridDates = useMemo(
-    () =>
-      Array.from({ length: 42 }, (_, i) => {
-        const d = new Date(gridStart);
-        d.setDate(d.getDate() + i);
-        return d;
-      }),
-    [gridStart]
-  );
-
-  const eventsByDate = useMemo(() => {
-    const map = {};
-    for (const ev of filtered) {
-      const k = keyOf(ev.date);
-      map[k] = map[k] || [];
-      map[k].push(ev);
-    }
-    for (const k in map) {
-      map[k].sort((a, b) => {
-        if (a.kind !== b.kind) return a.kind === "expense" ? -1 : 1;
-        return Number(b.amount || 0) - Number(a.amount || 0);
-      });
+  /* ---- Mapa por dia ---- */
+  const byDay = useMemo(() => {
+    const map = new Map();
+    for (const ev of filteredEvents) {
+      const key = format(ev.start, "yyyy-MM-dd");
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(ev);
     }
     return map;
-  }, [filtered]);
-
-  const goPrev = useCallback(
-    () => setView((v) => ({ y: v.m === 0 ? v.y - 1 : v.y, m: v.m === 0 ? 11 : v.m - 1 })),
-    []
-  );
-  const goNext = useCallback(
-    () => setView((v) => ({ y: v.m === 11 ? v.y + 1 : v.y, m: v.m === 11 ? 0 : v.m + 1 })),
-    []
-  );
-  const goToday = useCallback(() => setView({ y: today.getFullYear(), m: today.getMonth() }), [today]);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "ArrowLeft") goPrev();
-      if (e.key === "ArrowRight") goNext();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [goPrev, goNext]);
+  }, [filteredEvents]);
+  const getEventsFor = (date) => byDay.get(format(date, "yyyy-MM-dd")) || [];
 
   if (!isLogged) {
     return (
-      <div className={`space-y-6 min-h-screen ${isDark ? "dark" : ""}`}>
-        <Title text={t?.("calendar.title") || "Calendar"} />
-        <div className="text-slate-500 text-sm">
-          {t?.("auth.login_required") || "Please sign in to view your calendar."}
+      <div className="p-2 sm:p-4">
+        <Title text={tt(t, "calendar.title", "Calendário Financeiro")} />
+        <div className="text-sm opacity-70">
+          {tt(t, "auth.login_required", "Inicia sessão para veres o calendário.")}
         </div>
       </div>
     );
   }
 
-  const monthLabel = firstOfMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-
-  const EventTag = ({ ev }) => {
-    const isExpense = ev.kind === "expense";
-    const base = isExpense
-      ? "bg-red-100 border-red-300 text-red-700 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300"
-      : "bg-green-100 border-green-300 text-green-700 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300";
-    const opacity = ev.paid ? "" : "opacity-70";
-    return (
-      <div
-        className={`w-full text-[12px] md:text-[11px] px-2 py-[6px] rounded-md border ${base} ${opacity} flex items-center gap-2`}
-        title={`${ev.title} • ${ev.amount.toLocaleString(undefined, { style: "currency", currency: "EUR" })}`}
-      >
-        <div className={`w-1.5 h-3 rounded-sm ${isExpense ? "bg-red-500" : "bg-green-500"}`} />
-        <div className="truncate">{ev.title}</div>
-        <div className="ml-auto font-semibold">
-          {ev.amount.toLocaleString(undefined, { style: "currency", currency: "EUR" })}
-        </div>
-      </div>
-    );
-  };
-
-  const DayCell = ({ date }) => {
-    const k = keyOf(date);
-    const items = eventsByDate[k] || [];
-    const inMonth = date.getMonth() === view.m;
-    const isToday =
-      date.getFullYear() === today.getFullYear() &&
-      date.getMonth() === today.getMonth() &&
-      date.getDate() === today.getDate();
-
-    return (
-      <button
-        className={`min-h-[110px] sm:min-h-[120px] md:min-h-[140px] lg:min-h-[160px] w-full text-left rounded-2xl border overflow-hidden p-2 sm:p-3 flex flex-col gap-2 transition
-          ${
-            isToday
-              ? "border-blue-500 ring-1 ring-blue-300 bg-white dark:bg-slate-800"
-              : inMonth
-              ? "border-slate-200 bg-white dark:bg-slate-800 dark:border-slate-700"
-              : "border-slate-200 bg-slate-50 dark:bg-slate-900 dark:border-slate-700"
-          }`}
-        onClick={() => setSelectedDate(date)}
-      >
-        <div className="flex items-center justify-between">
-          <div className={`text-sm sm:text-base ${inMonth ? "text-slate-700 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}`}>
-            {date.getDate()}
-          </div>
-          <div className="flex gap-1">
-            {items.some((e) => e.kind === "expense") && (
-              <span className="text-[10px] px-1 rounded bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300">Exp</span>
-            )}
-            {items.some((e) => e.kind === "earning") && (
-              <span className="text-[10px] px-1 rounded bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-300">Inc</span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 flex flex-col gap-1 overflow-y-auto pr-1">
-          {items.slice(0, perDayLimit).map((ev) => (
-            <EventTag key={ev.id} ev={ev} />
-          ))}
-          {items.length === 0 && (
-            <div className="text-[12px] sm:text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-              {t?.("calendar.empty") || "No entries"}
-            </div>
-          )}
-          {items.length > perDayLimit && (
-            <div className="text-[12px] sm:text-[11px] text-slate-600 dark:text-slate-300">
-              +{items.length - perDayLimit} {t?.("calendar.more") || "more"}
-            </div>
-          )}
-        </div>
-      </button>
-    );
-  };
-
-  const selectedKey = selectedDate ? keyOf(selectedDate) : null;
-  const selectedList = selectedKey ? eventsByDate[selectedKey] || [] : [];
-
   return (
-    <div className={`${isDark ? "dark" : ""}`}>
-      <div className="space-y-6 min-h-screen text-slate-900 dark:text-slate-100">
-        {/* Título */}
-        <Title text={t?.("calendar.title") || "Finance Calendar"} />
+    <div className="px-2 sm:px-4 pb-6">
+      {/* estilos do cartão/grelha */}
+      <style>{`
+        .te-card{
+          border:2px solid ${colors.borderHex};
+          border-radius:20px;
+          overflow:visible;
+          box-shadow:0 0 10px rgba(37,99,235,.25);
+          padding:12px;
+          background:transparent;
+        }
+        .te-inner .rbc-month-view{
+          border:1px solid ${colors.borderHex};
+          border-radius:16px;
+          overflow:hidden;
+          background:transparent;
+        }
+        .te-inner .rbc-row.rbc-month-header { min-height: 3.25rem; }
+        .te-inner .rbc-header{
+          background:${colors.headerBg};
+          color:${colors.headerText};
+          border-color:${colors.borderHex};
+          font-weight:700;
+          font-size:clamp(12px, .8rem + .15vw, 14px);
+          padding:10px 8px;
+        }
+        .te-inner .rbc-month-row{ min-height: 4.1rem; }
+        @media (max-width:1024px){ .te-inner .rbc-month-row{ min-height: 3.9rem; } }
+        @media (max-width:640px){ .te-inner .rbc-month-row{ min-height: 3.5rem; } }
+        .te-inner .rbc-day-bg,.te-inner .rbc-month-row{ border-color:${colors.borderHex}; }
+        .te-inner .rbc-button-link{ font-size:clamp(12px,.75rem + .15vw,14px); }
+        .te-inner .rbc-today{
+          background:${colors.todayBg} !important;
+          box-shadow: inset 0 0 0 2px ${colors.todayRing};
+        }
+        .te-inner .rbc-off-range-bg{ background:${colors.offRangeBg} !important; }
+        .te-inner .rbc-off-range .rbc-button-link{ color:${colors.offRangeText} !important; opacity:.9; }
+        .te-inner .rbc-event,.te-inner .rbc-show-more{ display:none !important; }
+      `}</style>
 
-        {/* Filtros */}
-        <GenericFilter
-          value={flt}
-          onChange={setFlt}
-          t={t}
-          theme={theme}
-          showToggle
-          defaultOpen
-          filters={[
-            { key: "wallet", type: "select", options: walletOptions },
-            { key: "category", type: "select", options: categoryOptions },
-            { key: "kind", type: "select", options: kindOptions },
-            { key: "status", type: "select", options: statusOptions },
-          ]}
-        />
+      <Title text={tt(t, "calendar.title", "Calendário Financeiro")} />
 
-        <div className="flex items-center justify-between gap-3 flex-wrap mt-1">
-          <div className="flex items-center gap-2">
-            <button className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800" onClick={goToday}>
-              {t?.("calendar.today") || "Today"}
-            </button>
-            <button className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800" onClick={goPrev}>‹</button>
-            <button className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800" onClick={goNext}>›</button>
-          </div>
+      <GenericFilter
+        value={flt}
+        onChange={setFlt}
+        t={t}
+        theme={theme}
+        showToggle
+        defaultOpen
+        className="mb-6"
+        filters={[
+          { key: "wallet", type: "select", options: walletOptions },
+          { key: "category", type: "select", options: categoryOptions },
+          { key: "kind", type: "select", options: kindOptions },
+          { key: "status", type: "select", options: statusOptions },
+        ]}
+      />
 
-          <div className="text-xl font-semibold order-2 md:order-none">
-            {monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1)}
-          </div>
+      {loading && <div className="mt-4 opacity-80">{tt(t, "common.loading", "A carregar…")}</div>}
 
-          <div className="flex items-center gap-2">
-            <select
-              className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 dark:text-slate-100 shadow border border-slate-200 dark:border-slate-700 text-sm"
-              value={view.m}
-              onChange={(e) => setView((v) => ({ ...v, m: Number(e.target.value) }))}
-            >
-              {monthOptions.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label.charAt(0).toUpperCase() + m.label.slice(1)}
-                </option>
-              ))}
-            </select>
-            <select
-              className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 dark:text-slate-100 shadow border border-slate-200 dark:border-slate-700 text-sm"
-              value={view.y}
-              onChange={(e) => setView((v) => ({ ...v, y: Number(e.target.value) }))}
-            >
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+      {!loading && (
+        <>
+          <div className="te-card">
+            <ToolbarDesktop
+              colors={colors}
+              t={t}
+              date={currentDate}
+              onNavigate={(action, nd) => {
+                if (action === "DATE" && nd) setCurrentDate(nd);
+                else if (action === "TODAY") setCurrentDate(new Date());
+                else if (action === "PREV")
+                  setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+                else if (action === "NEXT")
+                  setCurrentDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+              }}
+            />
+            <ToolbarMobile
+              colors={colors}
+              t={t}
+              date={currentDate}
+              setDate={setCurrentDate}
+            />
 
-        {/* Header dos dias (sticky em mobile) */}
-        <div className="sticky top-0 z-10 bg-transparent">
-          <div className="grid grid-cols-7 gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400 select-none py-2">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-              <div key={d} className="px-2 text-center">
-                {d}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div ref={calWrapRef} className="grid grid-cols-7 gap-2 md:gap-3">
-          {gridDates.map((d) => (
-            <DayCell key={keyOf(d)} date={d} />
-          ))}
-        </div>
-
-        {selectedDate && (
-          <div className="rounded-2xl shadow-md border border-slate-200 dark:border-slate-700 overflow-hidden bg-white dark:bg-slate-800">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-              <div className="font-semibold text-base sm:text-lg">
-                {selectedDate.toLocaleDateString(undefined, {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </div>
-              <button
-                className="text-sm text-slate-600 dark:text-slate-300 hover:underline"
-                onClick={() => setSelectedDate(null)}
-              >
-                {t?.("common.close") || "Close"}
-              </button>
-            </div>
-            <div className="p-4 space-y-3">
-              {selectedList.length === 0 ? (
-                <div className="text-sm text-slate-500 dark:text-slate-300">
-                  {t?.("calendar.empty") || "No entries"}
-                </div>
+            <div className="te-inner">
+              {isMobile ? (
+                <MobileMonthList
+                  date={currentDate}
+                  getEventsFor={getEventsFor}
+                  colors={colors}
+                  onPickDay={setSelectedDate}
+                />
               ) : (
-                selectedList.map((ev) => (
-                  <div key={ev.id} className="flex items-center gap-3 text-[15px] sm:text-sm">
-                    <div className={`w-2.5 h-2.5 rounded-full ${ev.kind === "expense" ? "bg-red-500" : "bg-green-500"}`} />
-                    <div className="truncate">{ev.title}</div>
-                    <div className={`ml-auto font-semibold ${ev.kind === "expense" ? "text-red-600" : "text-green-600"}`}>
-                      {ev.amount.toLocaleString(undefined, { style: "currency", currency: "EUR" })}
-                    </div>
-                  </div>
-                ))
+                <Calendar
+                  localizer={localizer}
+                  events={filteredEvents}
+                  startAccessor="start"
+                  endAccessor="end"
+                  style={{ height: "clamp(520px, 78vh, 860px)" }}
+                  views={["month"]}
+                  date={currentDate}
+                  onNavigate={(date) => setCurrentDate(date)}
+                  defaultView="month"
+                  messages={{
+                    month: tt(t, "calendar.month", "Mês"),
+                    today: tt(t, "common.today", "Hoje"),
+                    previous: tt(t, "common.prev", "‹"),
+                    next: tt(t, "common.next", "›"),
+                  }}
+                  formats={{
+                    monthHeaderFormat: (d) =>
+                      format(d, "LLLL yyyy", { locale: pt }).toUpperCase(),
+                    dayFormat: (d) =>
+                      d.toLocaleDateString("pt-PT", { day: "2-digit" }),
+                    weekdayFormat: (d) => format(d, "eeee", { locale: pt }),
+                  }}
+                  selectable
+                  onSelectSlot={(slot) => {
+                    if (slot?.action === "click" || slot?.action === "select")
+                      setSelectedDate(slot.start);
+                  }}
+                  components={{
+                    toolbar: () => null,
+                    dateCellWrapper: (p) => (
+                      <DayCellIndicators
+                        {...p}
+                        eventsForDay={getEventsFor(p.value)}
+                        colors={colors}
+                      />
+                    ),
+                  }}
+                />
               )}
             </div>
           </div>
-        )}
 
-        {error && <div className="text-sm text-red-600">{error}</div>}
-        {loading && (
-          <div className="text-sm text-slate-500 dark:text-slate-300">
-            {t?.("calendar.loading") || "Loading calendar..."}
-          </div>
-        )}
-      </div>
+          <DayDrawer
+            open={!!selectedDate}
+            onClose={() => setSelectedDate(null)}
+            date={selectedDate || new Date()}
+            items={
+              selectedDate
+                ? filteredEvents.filter((e) => isSameDay(e.start, selectedDate))
+                : []
+            }
+            colors={colors}
+            t={t}
+          />
+        </>
+      )}
     </div>
   );
 }
-  
