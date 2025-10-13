@@ -1,4 +1,3 @@
-// src/pages/Wallets/ListWallets.jsx
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -12,14 +11,14 @@ import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 
-/* ----------------------------- UI helpers ----------------------------- */
 function Badge({ children, tone = "info" }) {
-  const map = {
-    ok:   { bg: "rgba(16,185,129,0.15)", fg: "#10B981" },
-    err:  { bg: "rgba(239,68,68,0.15)", fg: "#EF4444" },
-    info: { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" },
-    warn: { bg: "rgba(245,158,11,0.15)", fg: "#F59E0B" },
-  }[tone] || { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" };
+  const map =
+    {
+      ok: { bg: "rgba(16,185,129,0.15)", fg: "#10B981" },
+      err: { bg: "rgba(239,68,68,0.15)", fg: "#EF4444" },
+      info: { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" },
+      warn: { bg: "rgba(245,158,11,0.15)", fg: "#F59E0B" },
+    }[tone] || { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" };
 
   return (
     <span
@@ -31,17 +30,17 @@ function Badge({ children, tone = "info" }) {
   );
 }
 
-/* ----------------------------- premium check ----------------------------- */
 const norm = (v) => String(v ?? "").trim().toUpperCase();
 function isUserPremium({ roles, auth }) {
   if (Array.isArray(roles) && roles.some((r) => norm(r) === "PREMIUM")) return true;
   const flag = auth?.isPremium ?? auth?.IsPremium ?? auth?.premium ?? auth?.Premium;
   if (typeof flag === "boolean") return flag;
-  const plan = norm(auth?.subscription?.plan ?? auth?.Subscription?.Plan ?? auth?.plan ?? auth?.Plan);
+  const plan = norm(
+    auth?.subscription?.plan ?? auth?.Subscription?.Plan ?? auth?.plan ?? auth?.Plan
+  );
   return ["PREMIUM", "PRO", "PLUS"].includes(plan);
 }
 
-/* =============================== PAGE =============================== */
 export default function ListWallets() {
   const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,10 +73,10 @@ export default function ListWallets() {
 
   const statusOptions = useMemo(
     () => [
-      { value: "all",      label: t?.("common.all")       || "Todos" },
-      { value: "active",   label: t?.("common.active")    || "Ativas" },
-      { value: "archived", label: t?.("common.archived")  || "Arquivadas" },
-      { value: "primary",  label: t?.("common.primary")   || "Primária" },
+      { value: "all", label: t?.("common.all") || "Todos" },
+      { value: "active", label: t?.("common.active") || "Ativas" },
+      { value: "archived", label: t?.("common.archived") || "Arquivadas" },
+      { value: "primary", label: t?.("common.primary") || "Primária" },
     ],
     [t]
   );
@@ -105,7 +104,6 @@ export default function ListWallets() {
     });
   }, [wallets, flt]);
 
-  /* ---------- regra de criação ---------- */
   const premium = isUserPremium({ roles, auth });
   const activeCount = useMemo(
     () => (wallets || []).filter((w) => !w?.isArchived).length,
@@ -120,7 +118,9 @@ export default function ListWallets() {
       accessor: (w) => (
         <div className="flex items-center gap-2">
           <span className="font-medium">{w?.name || "-"}</span>
-          {w?.isPrimary && <Badge tone="info">{t?.("common.primary") || "Primary"}</Badge>}
+          {w?.isPrimary && (
+            <Badge tone="info">{t?.("common.primary") || "Primary"}</Badge>
+          )}
         </div>
       ),
     },
@@ -133,9 +133,11 @@ export default function ListWallets() {
       key: "status",
       headerKey: "status",
       accessor: (w) =>
-        w?.isArchived
-          ? <Badge tone="err">{t?.("common.archived") || "Archived"}</Badge>
-          : <Badge tone="ok">{t?.("common.active") || "Active"}</Badge>,
+        w?.isArchived ? (
+          <Badge tone="err">{t?.("common.archived") || "Archived"}</Badge>
+        ) : (
+          <Badge tone="ok">{t?.("common.active") || "Active"}</Badge>
+        ),
     },
   ];
 
@@ -144,7 +146,6 @@ export default function ListWallets() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title text={t?.("wallets.list") || "Carteiras"} />
 
-        {/* Botão: quando desativado, mostrar texto no hover (sem tooltip) */}
         <div className="relative group inline-flex flex-col items-end">
           <Button
             variant="primary"
@@ -186,58 +187,61 @@ export default function ListWallets() {
         showToggle
         defaultOpen
         showSearch
-        searchPlaceholder={t?.("wallets.searchPlaceholder") || "Pesquisar carteiras..."}
+        searchPlaceholder={
+          t?.("wallets.searchPlaceholder") || "Pesquisar carteiras..."
+        }
         filters={[
           {
             key: "status",
             type: "select",
-            label: t?.("wallets.status") || "Status",   // <- LABEL ADICIONADO
+            label: t?.("wallets.status") || "Status",
             options: statusOptions,
             defaultValue: "all",
           },
         ]}
       />
 
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="relative overflow-x-auto overflow-hidden">
-          <GenericTable
-            filteredData={filteredWallets}
-            columns={columns}
-            theme={theme}
-            t={t}
-            loading={loading}
-            rowKey={(w) => w?.id}
-            stickyHeader
-            truncateKeys={["name"]}
-            minTableWidth="48rem"
-            headClassName="bg-gray-50 !rounded-none"
-            headerCellClassName="!rounded-none"
-            emptyMessage={t?.("common.noResults") || "Sem resultados"}
-            edit={{
-              enabled: true,
-              navigate,
-              navigateTo: (w) => `/EditWallet/${w.id}`,
-            }}
-            remove={{
-              enabled: true,
-              confirmMessage:
-                t?.("common.confirmDelete") ||
-                "Tens a certeza que queres apagar esta carteira?",
-              doDelete: async (w) => {
-                try {
-                  await apiCall.delete(`/wallets/${w.id}`);
-                  setWallets((prev) => prev.filter((x) => x.id !== w.id));
-                  return true;
-                } catch {
-                  return false;
-                }
-              },
-              onError: (err) =>
-                setErrorSubmit(err?.message || "Erro ao apagar carteira."),
-            }}
-          />
-        </div>
-      </div>
+      <GenericTable
+        filteredData={filteredWallets}
+        columns={columns}
+        theme={theme}
+        t={t}
+        loading={loading}
+        rowKey={(w) => w?.id}
+        stickyHeader
+        truncateKeys={["name"]}
+        minTableWidth="48rem"
+        emptyMessage={t?.("common.noResults") || "Sem resultados"}
+        edit={{
+          enabled: true,
+          navigate,
+          navigateTo: (w) => `/EditWallet/${w.id}`,
+        }}
+        remove={{
+          enabled: true,
+          getConfirmMessage: (w) =>
+            w?.isPrimary
+              ? (t?.("wallets.deletePrimaryWarn") ??
+                  "⚠️ Esta é a tua carteira PRIMÁRIA.\nO sistema não permite apagar a primária.\nQueres tentar mesmo assim?")
+              : (t?.("common.confirmDelete") ??
+                  "Tens a certeza que queres apagar esta carteira?"),
+          doDelete: async (w) => {
+            const res = await apiCall.delete(`/wallets/${w.id}`);
+            if (res?.ok) {
+              setWallets((prev) => prev.filter((x) => x.id !== w.id));
+              return true;
+            }
+            const msg =
+              res?.error?.message ||
+              t?.("wallets.deleteError") ||
+              "Erro ao apagar carteira.";
+            window.alert(msg);
+            throw new Error(msg);
+          },
+          onError: (err) =>
+            setErrorSubmit(err?.message || "Erro ao apagar carteira."),
+        }}
+      />
 
       {errorSubmit && (
         <div className="text-sm text-red-600" role="alert">

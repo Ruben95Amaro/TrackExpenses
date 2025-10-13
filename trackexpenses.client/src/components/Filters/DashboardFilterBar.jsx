@@ -213,7 +213,7 @@ function Segmented({ value, onChange, options, theme }) {
 /* ========= PRINCIPAL ========= */
 
 export default function DashboardFilterBar({
-  value = {},                 // <- default seguro
+  value = {},
   onChange,
   onSearch,
   onClear,
@@ -229,7 +229,7 @@ export default function DashboardFilterBar({
   // inicia sempre fechado
   const [open, setOpen] = useState(false);
 
-  // alias seguro para evitar acessos nulos
+  // alias seguro
   const v = value || {};
 
   const txt = {
@@ -241,9 +241,6 @@ export default function DashboardFilterBar({
     day: t?.("dashboard.filters.day") || "Day",
     week: t?.("dashboard.filters.week") || "Week",
     month: t?.("dashboard.filters.month") || "Month",
-    both: t?.("dashboard.filters.both") || "Income & Expenses",
-    incOnly: t?.("dashboard.filters.incomeOnly") || "Income only",
-    expOnly: t?.("dashboard.filters.expenseOnly") || "Expenses only",
     clear: t?.("common.clear") || "Clear",
     apply: t?.("common.apply") || "Apply",
     allWallets: t?.("dashboard.filters.allWallets") || "All wallets",
@@ -260,7 +257,7 @@ export default function DashboardFilterBar({
 
   const setPatch = (patch) => onChange?.(patch);
 
-  // Validação de intervalo (usa v.* para estar protegido)
+  // Validação de intervalo
   const setFromSafe = (nextFromISO) => {
     const to = v.to ? toISO(v.to) : "";
     let safeFrom = nextFromISO || "";
@@ -335,31 +332,8 @@ export default function DashboardFilterBar({
             <DateCapsule value={v.to}   onChange={setToSafe}   label={txt.to}   theme={theme} />
           </div>
 
-          {/* Linha 2 */}
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-            <Segmented
-              value={v.granularity}
-              onChange={(val) => setPatch({ granularity: val })}
-              options={[
-                { value: "day", label: txt.day },
-                { value: "week", label: txt.week },
-                { value: "month", label: txt.month },
-              ]}
-              theme={theme}
-            />
-            <Segmented
-              value={v.type}
-              onChange={(val) => setPatch({ type: val })}
-              options={[
-                { value: "both", label: txt.both },
-                { value: "income", label: txt.incOnly },
-                { value: "expense", label: txt.expOnly },
-              ]}
-              theme={theme}
-            />
-          </div>
 
-          {/* Linha 3 */}
+          {/* Ações */}
           <div className="mt-4 flex flex-wrap justify-end gap-3">
             <button
               type="button"
@@ -369,7 +343,7 @@ export default function DashboardFilterBar({
               style={{ background: colors.clearBg, color: colors.clearFg }}
             >
               <X className="w-4 h-4" />
-              {txt.clear}
+              {t?.("common.clear") || "Clear"}
             </button>
             <button
               type="button"
@@ -379,7 +353,7 @@ export default function DashboardFilterBar({
               style={{ background: colors.primary, color: "#fff", boxShadow: colors.applyShadow }}
             >
               <Search className="w-4 h-4" />
-              {txt.apply}
+              {t?.("common.apply") || "Apply"}
             </button>
           </div>
         </div>
@@ -389,7 +363,7 @@ export default function DashboardFilterBar({
 }
 
 DashboardFilterBar.propTypes = {
-  value: PropTypes.object,            // agora opcional
+  value: PropTypes.object,
   onChange: PropTypes.func.isRequired,
   onSearch: PropTypes.func,
   onClear: PropTypes.func,

@@ -179,9 +179,6 @@ namespace TRACKEXPENSES.Server.Controllers
             var w = await _context.Wallets.FirstOrDefaultAsync(x => x.Id == id && x.UserId == userId, ct);
             if (w == null) return NotFound();
 
-            if (w.IsPrimary)
-                return UnprocessableEntity(new { message = "Não podes apagar a carteira primária." });
-
             _context.Wallets.Remove(w);
             await _context.SaveChangesAsync(ct);
             return Ok();

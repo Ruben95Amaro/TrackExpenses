@@ -15,11 +15,10 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: bg }}>
-      {/* TopBar esconde-se sozinho em >= md quando sidebarVisible=true */}
       <TopBar
         title={topbarTitle}
         menuItems={sidebarItems}
-        hideOnDesktop={sidebarVisible}   // 👈 chave
+        hideOnDesktop={sidebarVisible}   
       />
 
       <div className="flex flex-1 overflow-hidden">

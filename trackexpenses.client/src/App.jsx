@@ -13,7 +13,7 @@ import NotRequireAuth from "./services/Authentication/NotRequire";
 import { AuthTimer_resume } from "./services/MicroServices/AuthTime";
 
 import {
-  LineChart,   // dashboard / group dashboard (ícone coerente)
+  LineChart,   // dashboard / group dashboard
   Users,             // users / groups
   UserCog,           // group admin / settings
   Shield,            // admin dashboard
@@ -58,6 +58,7 @@ import ListWallets from "./Pages/Wallet/ListWallets";
 import EditWallet from "./Pages/Wallet/EditWallet";
 import CreateWallet from "./Pages/Wallet/CreateWallet";
 import WalletGate from "./services/Authentication/WalletGate";
+import ListGroups from "./Pages/GroupAdmin/GroupsList";
 
 function normalizeGroups(raw) {
   if (!raw) return [];
@@ -244,6 +245,8 @@ export default function App() {
           <Route path="/GroupAdminPage" element={<GroupAdminPage />} />
           <Route path="/GroupsList" element={<GroupsList />} />
           <Route path="/CreateGroup" element={<CreateGroup />} />
+          <Route path="/ListGroups" element={<ListGroups />} />
+          
         </Route>
 
         <Route element={<RequireAuth />}>
