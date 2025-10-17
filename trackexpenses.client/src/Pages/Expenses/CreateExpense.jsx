@@ -10,6 +10,7 @@ import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 import QRCodeFromPhoto from "../../components/QR/QRCodeFromPhoto";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { QrCode, Camera } from "lucide-react"; 
 
 const EP_CREATE   = "Expenses/CreateExpensesWithImage";
 const EP_WALLETS  = "/wallets?includeArchived=true";
@@ -20,68 +21,97 @@ const N = (v) => (v ?? "").toString().trim();
 const LAST_WALLET_KEY = "te:lastWalletId";
 
 const DEFAULT_EXPENSE_CATEGORIES = [
-  { key: "house",          value: "House" },
-  { key: "car",            value: "Car" },
-  { key: "bills",          value: "Bills" },
-  { key: "utilities",      value: "Utilities" },
-  { key: "health",         value: "Health" },
-  { key: "education",      value: "Education" },
-  { key: "personalCare",   value: "Personal Care" },
-  { key: "entertainment",  value: "Entertainment" },
-  { key: "subscriptions",  value: "Subscriptions" },
-  { key: "debtPayments",   value: "Debt Payments" },
-  { key: "others",         value: "Others" },
+  { key: "house", value: "House" },
+  { key: "car", value: "Car" },
+  { key: "bills", value: "Bills" },
+  { key: "utilities", value: "Utilities" },
+  { key: "health", value: "Health" },
+  { key: "education", value: "Education" },
+  { key: "personalCare", value: "Personal Care" },
+  { key: "entertainment", value: "Entertainment" },
+  { key: "subscriptions", value: "Subscriptions" },
+  { key: "debtPayments", value: "Debt Payments" },
+  { key: "others", value: "Others" },
 ];
 
-/** Ícones */
-const QrIcon = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
-    <path d="M4 4h6v6H4V4Z" stroke="currentColor" strokeWidth="1.5" />
-    <path d="M14 4h6v6h-6V4Z" stroke="currentColor" strokeWidth="1.5" />
-    <path d="M4 14h6v6H4v-6Z" stroke="currentColor" strokeWidth="1.5" />
-    <path d="M14 14h3v3m3-6v3m-6 3h3m0 0v3" stroke="currentColor" strokeWidth="1.5" />
-  </svg>
-);
-const CamIcon = (props) => (
-  <svg viewBox="0 0 24 24" fill="none" aria-hidden {...props}>
-    <path d="M9 7l1.2-1.6c.2-.3.5-.4.8-.4h2c.3 0 .6.1.8.4L15 7h3a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-7a3 3 0 0 1 3-3h3Z" stroke="currentColor" strokeWidth="1.5"/>
-    <circle cx="12" cy="14" r="3.5" stroke="currentColor" strokeWidth="1.5"/>
-  </svg>
-);
-
-function QRUploadTile({ onDecoded, title, subtitle, label }) {
+function QRUploadTile({ onDecoded, onError, title, subtitle, label }) {
   const shellRef = useRef(null);
   const trigger = () => {
-    const btn = shellRef.current?.querySelector("button, [role='button'], input[type='button']");
-    btn?.click();
+    const input = shellRef.current?.querySelector("input[type='file']");
+    input?.click();
   };
+
   return (
-    <div className="flex items-start gap-4">
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium">{title}</div>
-        <p className="text-xs opacity-70">{subtitle}</p>
+    <div className="flex flex-wrap items-start gap-4" style={{ color: "#000" }}>
+      {/* Texto */}
+      <div
+        className="
+          basis-[320px] min-w-[260px] grow
+          p-3 rounded-lg ring-1 ring-black/20 bg-black/5
+          space-y-1
+        "
+        style={{ wordBreak: "break-word", hyphens: "auto" }}
+      >
+        <div className="text-sm font-medium leading-snug">{title}</div>
+        <p className="text-xs opacity-80 leading-relaxed">{subtitle}</p>
       </div>
 
-      <div className="ml-auto mr-2 md:mr-4 lg:mr-6">
+      <div className="shrink-0 w-full md:w-auto flex justify-center md:justify-start">
         <button
           type="button"
           onClick={trigger}
-          className="shrink-0 w-32 h-32 rounded-md border-2 border-dashed border-white/30 bg-white/5 
-                     hover:bg-white/10 hover:border-white/50 flex flex-col items-center justify-center gap-2 transition"
-          title={title}
+          className="
+            w-36 md:w-40 aspect-square rounded-lg
+            border border-black/30 bg-black/5
+            hover:bg-black/10 hover:border-black/50
+            grid place-items-center gap-2 transition relative
+          "
+          title={typeof title === "string" ? title : "Scan QR"}
+          style={{ color: "#000" }}
         >
-          <span className="relative">
-            <QrIcon className="w-9 h-9 opacity-90" />
-            <span className="absolute -bottom-1 -right-1">
-              <CamIcon className="w-5 h-5 opacity-90" />
+          {/* Wrapper dos ícones */}
+          <span className="relative inline-block" style={{ width: 52, height: 52 }}>
+            {/* QR por trás */}
+            <QrCode
+              className="absolute inset-0 w-12 h-12 z-0 opacity-95"
+              strokeWidth={2}
+              aria-hidden
+              style={{ shapeRendering: "geometricPrecision" }}
+            />
+
+            {/* Câmara à frente, sem fundo, com halo branco para legibilidade */}
+            <span
+              className="absolute -bottom-[2px] -right-[2px] z-10 pointer-events-none"
+              aria-hidden
+            >
+              {/* Halo branco por baixo */}
+              <Camera
+                className="w-5 h-5 absolute inset-0"
+                stroke="#ffffff"
+                strokeWidth={3}
+                style={{ shapeRendering: "geometricPrecision" }}
+              />
+              {/* Traço principal por cima */}
+              <Camera
+                className="w-5 h-5 relative"
+                stroke="currentColor"
+                strokeWidth={2}
+                style={{
+                  shapeRendering: "geometricPrecision",
+                  filter:
+                    "drop-shadow(0 0 0.25px rgba(0,0,0,.35)) drop-shadow(0 0.5px 0.5px rgba(0,0,0,.25))",
+                }}
+              />
             </span>
           </span>
-          <span className="text-xs opacity-80">{label}</span>
+
+          <span className="text-xs opacity-90 px-2">{label}</span>
         </button>
       </div>
 
-      <div ref={shellRef} className="[&_button]:hidden [&_[role='button']]:hidden" aria-hidden>
-        <QRCodeFromPhoto buttonLabel="hidden" onDecoded={onDecoded} />
+      {/* Leitor real (headless) */}
+      <div ref={shellRef} aria-hidden>
+        <QRCodeFromPhoto renderMode="headless" onDecoded={onDecoded} onError={onError} />
       </div>
     </div>
   );
@@ -112,6 +142,7 @@ export default function CreateExpense() {
   // validação
   const [fieldErrors, setFieldErrors] = useState({});
   const [formValid, setFormValid] = useState(true);
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
 
   // Preview + lightbox
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState(null);
@@ -120,7 +151,10 @@ export default function CreateExpense() {
   const openReceiptPicker = () => receiptInputRef.current?.click();
   const handleReceiptPick = (file) => {
     set("Image", file || null);
-    setReceiptPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return file ? URL.createObjectURL(file) : null; });
+    setReceiptPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return file ? URL.createObjectURL(file) : null;
+    });
   };
   useEffect(() => () => { if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl); }, [receiptPreviewUrl]);
 
@@ -176,7 +210,7 @@ export default function CreateExpense() {
     const baseValuesLower = new Set(DEFAULT_EXPENSE_CATEGORIES.map(c => c.value.toLowerCase()));
     const extras = historyCategories.filter(c => !baseValuesLower.has(c.toLowerCase()));
     const defaults = DEFAULT_EXPENSE_CATEGORIES.map(c => ({
-      value: c.value,                  
+      value: c.value,
       labelKey: `categories.${c.key}`,
       labelFallback: c.value,
     }));
@@ -188,7 +222,7 @@ export default function CreateExpense() {
     return [...defaults, ...extraItems];
   }, [historyCategories]);
 
-  // ----------- validações (live) -----------
+  // validações (live)
   const runValidation = (state) => {
     const F = state || form;
     const e = {};
@@ -224,6 +258,8 @@ export default function CreateExpense() {
   const installmentsCount = Math.max(1, Number(form.RepeatCount || 0) || 1);
   const perInstallment = kind === "installments" ? (installmentsCount > 0 ? remaining / installmentsCount : 0) : 0;
 
+  const [qrError, setQrError] = useState(null);
+
   const onQRDecoded = (text) => {
     const parts = String(text || "").split("*").map(s => s.trim()).filter(Boolean);
     const map = {};
@@ -250,6 +286,7 @@ export default function CreateExpense() {
     }));
 
     setKind("one");
+    setQrError(null);
   };
 
   // submit
@@ -289,7 +326,6 @@ export default function CreateExpense() {
     fd.append("Periodicity", Periodicity);
     fd.append("Category", form.Category || "");
     fd.append("WalletId", form.WalletId || "");
-    // fd.append("ShouldNotify", String(false));
 
     if (form.Image) {
       fd.append("UploadType", form.UploadType || "ExpenseImage");
@@ -301,6 +337,7 @@ export default function CreateExpense() {
   const handleSubmit = async (e) => {
     e?.preventDefault?.();
     setErr(null);
+    setAttemptedSubmit(true);
     if (!runValidation(form)) return;
     setSubmitting(true);
     try {
@@ -326,47 +363,59 @@ export default function CreateExpense() {
   );
   const hasSelectedCustom = form.Category && !knownValuesLower.has(form.Category.toLowerCase());
 
+  const scanLabel =
+    (t?.("qr.scanFromPhoto") && t("qr.scanFromPhoto") !== "qr.scanFromPhoto")
+      ? t("qr.scanFromPhoto")
+      : "Scan from photo";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ color: "#000" }}>
       <Title text={t?.("expenses.new") || "New expense"} />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title={t?.("expenses.total") || "Total"} value={total.toLocaleString(undefined, { style: "currency", currency: "EUR" })} />
-        <StatCard title={t?.("expenses.paid") || "Already paid"} value={Number(form.PayAmount || 0).toLocaleString(undefined, { style: "currency", currency: "EUR" })} />
-        <StatCard title={t?.("expenses.remaining") || "Remaining"} value={remaining.toLocaleString(undefined, { style: "currency", currency: "EUR" })} />
+        <StatCard
+          title={t?.("expenses.total") || "Total"}
+          value={total.toLocaleString(undefined, { style: "currency", currency: "EUR" })}
+        />
+        <StatCard
+          title={t?.("expenses.paid") || "Already paid"}
+          value={Number(form.PayAmount || 0).toLocaleString(undefined, { style: "currency", currency: "EUR" })}
+        />
+        <StatCard
+          title={t?.("expenses.remaining") || "Remaining"}
+          value={remaining.toLocaleString(undefined, { style: "currency", currency: "EUR" })}
+        />
       </div>
 
       {/* QR + Photo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <QRUploadTile
-            onDecoded={onQRDecoded}
-            title={t?.("qr.title") || "Read invoice QR (Portugal)"}
-            subtitle={t?.("qr.subtitle") || "Upload a clear photo of the QR. I'll auto-fill date, value and description."}
-            label={t?.("qr.scanFromPhoto") || "Scan from photo"}
-          />
+        {/* Card do QR */}
+        <Card className="overflow-hidden">
+          <div className="grid gap-4 [grid-template-columns:minmax(0,1fr)]">
+            <QRUploadTile
+              onDecoded={onQRDecoded}
+              onError={setQrError}
+              title={t?.("qr.title") || "Read invoice QR (Portugal)"}
+              subtitle={t?.("qr.subtitle") || "Upload a clear photo of the QR. I'll auto-fill date, value and description."}
+              label={scanLabel}
+            />
+            {qrError && (
+              <p className="text-sm md:text-base text-red-600" style={{ wordBreak: "break-word", hyphens: "auto" }}>
+                {qrError}
+              </p>
+            )}
+          </div>
         </Card>
 
-        <Card>
-          <div className="flex items-start gap-4">
-            {/* Preview (click to enlarge) */}
-            <button
-              type="button"
-              className="w-28 h-28 rounded-md overflow-hidden ring-1 ring-white/10 bg-white/5 flex items-center justify-center shrink-0"
-              onClick={() => receiptPreviewUrl && setLightboxOpen(true)}
-              title={receiptPreviewUrl ? (t?.("receipt.clickToEnlarge") || "Click to enlarge") : ""}
-            >
-              {receiptPreviewUrl ? (
-                <img src={receiptPreviewUrl} alt={t?.("receipt.previewAlt") || "Receipt preview"} className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-xs opacity-60 px-2 text-center">{t?.("receipt.noPreview") || "No preview"}</span>
-              )}
-            </button>
-
-            {/* Uploader via botão */}
-            <div className="flex-1">
-              <label className="block mb-1 text-sm font-medium">{t?.("receipt.label") || "Receipt / expense photo"}</label>
+        {/* Card da foto/preview */}
+        <Card className="overflow-hidden">
+          <div className="flex flex-wrap items-start gap-4">
+            {/* Texto/controles */}
+            <div className="basis-[320px] min-w-[260px] grow order-1 md:order-2">
+              <label className="block mb-2 text-sm font-medium" style={{ color: "#000" }}>
+                {t?.("receipt.label") || "Receipt / expense photo"}
+              </label>
 
               <input
                 ref={receiptInputRef}
@@ -376,7 +425,7 @@ export default function CreateExpense() {
                 className="hidden"
               />
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" onClick={openReceiptPicker} className="h-11 rounded-md px-4">
                   {receiptPreviewUrl ? (t?.("receipt.change") || "Change photo") : (t?.("receipt.add") || "Add photo")}
                 </Button>
@@ -388,16 +437,44 @@ export default function CreateExpense() {
                 )}
               </div>
 
-              <p className="text-xs opacity-70 mt-2">
+              <p className="text-xs opacity-80 mt-2 leading-relaxed" style={{ wordBreak: "break-word", hyphens: "auto" }}>
                 {t?.("receipt.note") || "This is stored on the expense (not the QR reading)."}
               </p>
+            </div>
+
+            {/* Preview */}
+            <div className="order-2 md:order-1 w-full md:w-auto flex justify-center md:justify-start">
+              <button
+                type="button"
+                onClick={() => receiptPreviewUrl && setLightboxOpen(true)}
+                title={receiptPreviewUrl ? (t?.("receipt.clickToEnlarge") || "Click to enlarge") : ""}
+                className="
+                  w-[180px] md:w-[200px] aspect-square rounded-lg overflow-hidden
+                  border border-black/30 bg-black/5
+                  hover:bg-black/10 hover:border-black/50
+                  grid place-items-center
+                "
+                style={{ color: "#000" }}
+              >
+                {receiptPreviewUrl ? (
+                  <img
+                    src={receiptPreviewUrl}
+                    alt={t?.("receipt.previewAlt") || "Receipt preview"}
+                    className="max-w-full max-h-full object-contain object-center block"
+                  />
+                ) : (
+                  <span className="text-xs opacity-70 px-2 text-center">
+                    {t?.("receipt.noPreview") || "No preview"}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </Card>
       </div>
 
       <Card>
-        <div className="flex flex-wrap items-center justify-evenly py-4">
+        <div className="flex flex-wrap items-center justify-evenly gap-3 py-4">
           <Button
             type="button"
             variant={kind === "one" ? "primary" : "secondary"}
@@ -426,22 +503,38 @@ export default function CreateExpense() {
 
         {kind === "installments" && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input label={t?.("expenses.installments.count") || "Number of installments"} type="number" min="1" value={form.RepeatCount} onChange={(e) => set("RepeatCount", e.target.value)} />
-            <div className="self-end text-sm opacity-75 md:col-span-2">
+            <Input
+              label={t?.("expenses.installments.count") || "Number of installments"}
+              type="number"
+              min="1"
+              value={form.RepeatCount}
+              onChange={(e) => set("RepeatCount", e.target.value)}
+            />
+            <div className="self-end text-sm opacity-80 md:col-span-2 min-w-0" style={{ color: "#000" }}>
               {(t?.("expenses.installments.each") || "Each installment ≈")} {isFinite(perInstallment) ? perInstallment.toFixed(2) : "—"} €
-              <span className="ml-2 opacity-60">{t?.("expenses.installments.note") || "(uses “Paid already” as the down payment)"}</span>
+              <span className="ml-2 opacity-70">{t?.("expenses.installments.note") || "(uses “Paid already” as the down payment)"} </span>
             </div>
           </div>
         )}
 
         {kind === "recurring" && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Select label={t?.("expenses.recurring.periodicity") || "Periodicity"} value={form.Periodicity} onChange={(e) => set("Periodicity", e.target.value)}>
+            <Select
+              label={t?.("expenses.recurring.periodicity") || "Periodicity"}
+              value={form.Periodicity}
+              onChange={(e) => { set("Periodicity", e.target.value); }}
+            >
               {["Daily","Weekly","Monthly","Yearly","Endless"].map((p, i) => (
                 <option key={`p-${i}`} value={p}>{t?.(`periodicity.${p.toLowerCase()}`) || p}</option>
               ))}
             </Select>
-            <Input label={t?.("expenses.recurring.repeatCount") || "Repetitions (optional)"} type="number" min="1" value={form.RepeatCount} onChange={(e) => set("RepeatCount", e.target.value)} />
+            <Input
+              label={t?.("expenses.recurring.repeatCount") || "Repetitions (optional)"}
+              type="number"
+              min="1"
+              value={form.RepeatCount}
+              onChange={(e) => set("RepeatCount", e.target.value)}
+            />
           </div>
         )}
       </Card>
@@ -450,19 +543,62 @@ export default function CreateExpense() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <Card>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label={t?.("expenses.form.name") || "Name"} value={form.Name} onChange={(e) => set("Name", e.target.value)} required />
-            <Select label={t?.("expenses.form.wallet") || "Wallet"} value={form.WalletId} onChange={(e) => set("WalletId", e.target.value)} required>
+            <Input
+              label={t?.("expenses.form.name") || "Name"}
+              value={form.Name}
+              onChange={(e) => set("Name", e.target.value)}
+              required
+              error={attemptedSubmit ? fieldErrors.Name : undefined}
+            />
+            <Select
+              label={t?.("expenses.form.wallet") || "Wallet"}
+              value={form.WalletId}
+              onChange={(e) => { set("WalletId", e.target.value); }}
+              required
+            >
               {walletOptions.map((w, i) => (<option key={w.id || `w-${i}`} value={w.id}>{w.name || "—"}</option>))}
             </Select>
 
-            <Input label={t?.("expenses.form.total") || "Total amount"} type="number" step="0.01" value={form.Value} onChange={(e) => set("Value", e.target.value)} required />
-            <Input label={t?.("expenses.form.paidAlready") || "Paid already (optional)"} type="number" step="0.01" value={form.PayAmount} onChange={(e) => set("PayAmount", e.target.value)} />
+            <Input
+              label={t?.("expenses.form.total") || "Total amount"}
+              type="number"
+              step="0.01"
+              value={form.Value}
+              onChange={(e) => set("Value", e.target.value)}
+              required
+              error={attemptedSubmit ? fieldErrors.Value : undefined}
+            />
+            <Input
+              label={t?.("expenses.form.paidAlready") || "Paid already (optional)"}
+              type="number"
+              step="0.01"
+              value={form.PayAmount}
+              onChange={(e) => set("PayAmount", e.target.value)}
+              error={attemptedSubmit ? fieldErrors.PayAmount : undefined}
+            />
 
-            <Input label={t?.("expenses.form.startDate") || "Start date"} type="date" value={form.StartDate} onChange={(e) => set("StartDate", e.target.value)} required />
-            <Input label={t?.("expenses.form.endDate") || "End date (optional)"} type="date" value={form.EndDate} onChange={(e) => set("EndDate", e.target.value)} />
+            <Input
+              label={t?.("expenses.form.startDate") || "Start date"}
+              type="date"
+              value={form.StartDate}
+              onChange={(e) => set("StartDate", e.target.value)}
+              required
+              error={attemptedSubmit ? fieldErrors.StartDate : undefined}
+            />
+            <Input
+              label={t?.("expenses.form.endDate") || "End date (optional)"}
+              type="date"
+              value={form.EndDate}
+              onChange={(e) => set("EndDate", e.target.value)}
+              error={attemptedSubmit ? fieldErrors.EndDate : undefined}
+            />
 
             {/* Category */}
-            <Select label={t?.("expenses.form.category") || "Category"} value={form.Category} onChange={(e) => set("Category", e.target.value)}>
+            <Select
+              label={t?.("expenses.form.category") || "Category"}
+              value={form.Category}
+              onChange={(e) => set("Category", e.target.value)}
+            >
               <option value="">{t?.("common.select_option") || "Select an option"}</option>
               {mergedCategories.map((c, i) => (
                 <option key={`cat-${i}`} value={c.value}>
@@ -473,18 +609,33 @@ export default function CreateExpense() {
             </Select>
           </div>
 
-          <TextArea label={t?.("expenses.form.description") || "Description"} rows={4} value={form.Description} onChange={(e) => set("Description", e.target.value)} />
+          <TextArea
+            label={t?.("expenses.form.description") || "Description"}
+            rows={4}
+            value={form.Description}
+            onChange={(e) => set("Description", e.target.value)}
+          />
         </Card>
 
-        {err && <div className="text-sm text-red-600">{err}</div>}
+        {err && (
+          <div className="text-sm text-red-600" style={{ wordBreak: "break-word", hyphens: "auto" }}>
+            {err}
+          </div>
+        )}
       </form>
 
       {/* Footer buttons */}
-      <div className="mt-6 pt-4 flex items-center justify-between">
+      <div className="mt-6 pt-4 flex flex-wrap gap-3 items-center justify-between">
         <Button type="button" variant="secondary" onClick={() => window.history.back()} disabled={submitting} className="h-11 rounded-md px-4">
           {t?.("common.cancel") || "Cancel"}
         </Button>
-        <Button type="submit" onClick={handleSubmit} disabled={submitting || !formValid} title={!formValid ? (t?.("common.fixErrors") || "Fix the errors above to continue") : ""} className="h-11 rounded-md px-4">
+        <Button
+          type="submit"
+          onClick={handleSubmit}
+          disabled={submitting || !formValid}
+          title={!formValid ? (t?.("common.fixErrors") || "Fix the errors above to continue") : ""}
+          className="h-11 rounded-md px-4"
+        >
           {submitting ? (t?.("common.saving") || "Saving...") : (t?.("common.create") || "Create")}
         </Button>
       </div>

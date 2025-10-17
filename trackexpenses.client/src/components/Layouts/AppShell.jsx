@@ -15,11 +15,7 @@ export default function AppShell({
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: bg }}>
-      <TopBar
-        title={topbarTitle}
-        menuItems={sidebarItems}
-        hideOnDesktop={sidebarVisible}   
-      />
+      <TopBar title={topbarTitle} menuItems={sidebarItems} />
 
       <div className="flex flex-1 overflow-hidden">
         {sidebarVisible && (

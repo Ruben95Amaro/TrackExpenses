@@ -4,34 +4,60 @@ import AuthContext from "./AuthContext";
 
 /**
  * Uso:
- * <Route element={<RequireRoles allow="GROUPADMINISTRATOR" />}>
- *   <Route path="/groups" element={<GroupsPage />} />
+ * <Route element={<RequireRoles allow={["GROUPADMINISTRATOR","GROUPMEMBER"]} />}>
+ *   <Route path="/GroupsList" element={<GroupsPage />} />
  * </Route>
  */
+
+const N = (v) => String(v ?? "").trim().toUpperCase();
+const toArray = (r) =>
+  Array.isArray(r) ? r : typeof r === "string" ? r.split(/[,\s]+/) : [];
+
+// normaliza sem colapsar todos os "GROUP*"
+const normalizeRole = (raw) => {
+  const v = N(raw).replace(/\s+/g, ""); // remove espaços internos
+  if (!v) return "USER";
+
+  // Admin
+  if (["ADMIN", "ADM", "ADMINISTRATOR"].includes(v)) return "ADMINISTRATOR";
+
+  // Group Admin
+  if (["GROUPADMINISTRATOR", "GROUP-ADMIN", "GROUP_ADMIN", "GROUPADMIN"].includes(v))
+    return "GROUPADMINISTRATOR";
+
+  // Group Member
+  if (["GROUPMEMBER", "GROUP-MEMBER", "GROUP_MEMBER", "MEMBER"].includes(v))
+    return "GROUPMEMBER";
+
+  // Premium
+  if (["PREMIUM", "PRO", "PLUS"].includes(v)) return "PREMIUM";
+
+  // User
+  if (v === "USER") return "USER";
+
+  // outros roles custom mantêm-se
+  return v;
+};
+
 export default function RequireRoles({ allow = [], redirectTo = "/" }) {
-  const { roles } = useContext(AuthContext); // <-- sem useAuth
+  const { roles } = useContext(AuthContext);
   const loc = useLocation();
 
-  // normalizações
-  const N = (v) => String(v ?? "").trim().toUpperCase();
-  const toArray = (r) => (Array.isArray(r) ? r : typeof r === "string" ? r.split(/[,\s]+/) : []);
+  // roles do utilizador
+  const userRoles = useMemo(
+    () => Array.from(new Set(toArray(roles).map(normalizeRole).filter(Boolean))),
+    [roles]
+  );
 
-  const userRoles = useMemo(() => toArray(roles).map(N).filter(Boolean), [roles]);
+  // admin tem acesso a tudo
   const isAdmin = userRoles.includes("ADMINISTRATOR");
 
-  const normalizeRole = (raw) => {
-    let r = N(raw);
-    if (!r) r = "USER";
-    if (r.startsWith("ADMIN")) r = "ADMINISTRATOR";
-    if (r.startsWith("GROUP")) r = "GROUPADMINISTRATOR";
-    if (["GROUP-ADMIN", "GROUP_ADMIN"].includes(r)) r = "GROUPADMINISTRATOR";
-    return r;
-  };
+  // roles requeridos (se vazio => USER)
+  const requiredInput = toArray(allow);
+  const required = (requiredInput.length ? requiredInput : ["USER"]).map(normalizeRole);
 
-  const required = toArray(allow).map(normalizeRole);
-
-  // regra: ADMINISTRATOR tem acesso a tudo; senão, precisa de ter pelo menos 1 das required
-  const ok = isAdmin || required.some((r) => userRoles.includes(r) || r === "USER");
+  // regra: admin passa; senão precisa de pelo menos 1 role requerido ou USER
+  const ok = isAdmin || required.some((r) => r === "USER" || userRoles.includes(r));
 
   return ok ? (
     <Outlet />

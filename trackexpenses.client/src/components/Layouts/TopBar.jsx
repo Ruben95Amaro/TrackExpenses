@@ -1,17 +1,8 @@
 import React, { useState, useEffect, useMemo, useContext } from "react";
 import { Link } from "react-router-dom";
-import {
-  Menu as MenuIcon,
-  Wallet,
-  Settings,
-  LogOut,
-  DollarSign,
-  LogIn,
-  UserPlus,
-} from "lucide-react";
+import { Menu as MenuIcon, Wallet, LogIn, UserPlus } from "lucide-react";
 import { useTheme } from "../../styles/Theme/Theme";
 import AuthContext from "../../services/Authentication/AuthContext";
-import useLogout from "../../services/Authentication/Logout";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 
@@ -19,22 +10,19 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const { t } = useLanguage();
-  const { auth, roles: ctxRoles, isAuthenticated } =
-    useContext(AuthContext) || {};
-  const logout = useLogout();
+  const { auth, roles: ctxRoles, isAuthenticated } = useContext(AuthContext) || {};
 
   const c = theme?.colors || {};
-  const topBg = c.background?.default || "#0B1020";
-  const topText = c.text?.primary || "#E5E7EB";
-  const ddBg = c.background?.paper || "#0F172A";
-  const ddText = c.text?.primary || "#E5E7EB";
-  const ddMuted = c.text?.secondary || "#94A3B8";
+  const topBg    = c.menu?.bg || "#0B1020";
+  const topText  = c.text?.primary || "#E5E7EB";
+  const ddBg     = c.background?.paper || "#0F172A";
+  const ddText   = c.text?.primary || "#E5E7EB";
+  const ddMuted  = c.text?.secondary || "#94A3B8";
   const ddBorder = c.menu?.border || "rgba(148,163,184,0.2)";
-  const ddHover = c.menu?.hoverBg || "rgba(255,255,255,0.06)";
-  const iconCol = c.primary?.main || "#5B5BF5";
+  const ddHover  = c.menu?.hoverBg || "rgba(255,255,255,0.06)";
+  const iconCol  = c.primary?.main || "#5B5BF5";
   const topBorder = c.menu?.border || "rgba(255,255,255,0.08)";
 
-  /* ESC fecha menu */
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && setMobileOpen(false);
     document.addEventListener("keydown", onKey);
@@ -45,11 +33,9 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
     };
   }, [mobileOpen]);
 
-  /* roles helpers */
   const userRoles = useMemo(() => {
     if (Array.isArray(ctxRoles)) return ctxRoles;
-    if (typeof ctxRoles === "string")
-      return ctxRoles.split(/[,\s]+/).filter(Boolean);
+    if (typeof ctxRoles === "string") return ctxRoles.split(/[,\s]+/).filter(Boolean);
     return [];
   }, [ctxRoles]);
 
@@ -62,17 +48,12 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
   const sectionOf = (allow) => {
     const r = Array.isArray(allow) ? allow[0] : allow;
     switch (r) {
-      case "ADMINISTRATOR":
-        return "ADMIN";
-      case "GROUPADMINISTRATOR":
-        return "GROUPADMIN";
-      case "PREMIUM":
-        return "PREMIUM";
-      case "GROUPMEMBER":
-        return "GROUP";
+      case "ADMINISTRATOR": return "ADMIN";
+      case "GROUPADMINISTRATOR": return "GROUPADMIN";
+      case "PREMIUM": return "PREMIUM";
+      case "GROUPMEMBER": return "GROUP";
       case "USER":
-      default:
-        return "USER";
+      default: return "USER";
     }
   };
 
@@ -87,7 +68,6 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
     return g;
   }, [menuItems, userRoles]);
 
-  /* profile */
   const [profile, setProfile] = useState({
     firstName: "",
     lastName: "",
@@ -161,16 +141,12 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
         </div>
         {items.map(({ to, icon: Icon, label }) => (
           <Link
-            key={to}
+            key={`${to || ""}::${label || ""}`}
             to={to}
             className="flex justify-center items-center gap-3 px-4 py-3 border-t transition-colors"
             style={{ borderColor: ddBorder, color: ddText }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.backgroundColor = ddHover)
-            }
-            onMouseLeave={(e) =>
-              (e.currentTarget.style.backgroundColor = "transparent")
-            }
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = ddHover)}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
             onClick={() => setMobileOpen(false)}
           >
             {Icon && <Icon className="h-5 w-5" style={{ color: iconCol }} />}
@@ -194,7 +170,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
       <div className="relative w-full h-16 flex items-center px-4 sm:px-6 lg:px-8">
         {/* Hamburguer (visível até <xl) */}
         <button
-          className="xl:hidden p-2 rounded-lg transition-colors"
+          className="xl:hidden p-2 rounded-lg transition-colors pointer-events-auto"
           style={{ color: topText }}
           onClick={() => setMobileOpen((v) => !v)}
           aria-label="Abrir menu"
@@ -231,27 +207,31 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
           </Link>
         </div>
 
-        {/* BOTÕES DIREITA */}
+        {/* RIGHT BUTTONS (DESKTOP) */}
         {!isAuthenticated && (
-          <div className="hidden xl:flex items-center gap-4 ml-auto">
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden xl:flex items-center gap-3 pointer-events-auto">
+            {/* Light/Dark */}
             <button
-              onClick={toggleTheme}
-              className="h-10 px-5 rounded-full border text-sm font-medium inline-flex items-center justify-center transition duration-200 ease-out hover:shadow-md active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              onClick={() => {
+                toggleTheme();
+              }}
+              className="h-10 px-5 rounded-full border text-sm font-medium transition duration-200 ease-out hover:shadow-md active:scale-[.98]"
               style={{
                 borderColor: ddBorder,
-                color: topText,
+                color: ddText,
                 backgroundColor: "transparent",
               }}
             >
               {isDarkMode ? "Dark" : "Light"}
             </button>
 
+            {/* SignUp */}
             <Link
               to="/register"
-              className="h-10 px-5 rounded-full border text-sm font-medium inline-flex items-center justify-center gap-2 transition duration-200 ease-out hover:shadow-md active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              className="h-10 px-5 rounded-full border text-sm font-medium flex items-center gap-2 transition duration-200 ease-out hover:shadow-md active:scale-[.98]"
               style={{
                 borderColor: ddBorder,
-                color: topText,
+                color: ddText,
                 backgroundColor: "transparent",
               }}
             >
@@ -259,9 +239,10 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
               SignUp
             </Link>
 
+            {/* Login */}
             <Link
               to="/login"
-              className="h-10 px-5 rounded-full text-sm font-medium inline-flex items-center justify-center gap-2 transition duration-200 ease-out hover:brightness-110 active:scale-[.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              className="h-10 px-5 rounded-full text-sm font-medium flex items-center gap-2 transition duration-200 ease-out hover:brightness-110 active:scale-[.98]"
               style={{ backgroundColor: iconCol, color: "#fff" }}
             >
               <LogIn className="h-4 w-4" />
@@ -310,7 +291,7 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
                   }}
                 >
                   <UserPlus className="h-4 w-4" />
-                  Signup
+                  SignUp
                 </Link>
 
                 <Link
@@ -325,6 +306,10 @@ export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {
               </div>
             ) : (
               <>
+                <Section title={t?.("common.admin")} items={groups.ADMIN} />
+                <Section title={t?.("common.adminGroup")} items={groups.GROUPADMIN} />
+                <Section title={t?.("common.groupMember")} items={groups.GROUP} />
+                <Section title={t?.("common.premium")} items={groups.PREMIUM} />
                 <Section title={t?.("common.user")} items={groups.USER} />
               </>
             )}

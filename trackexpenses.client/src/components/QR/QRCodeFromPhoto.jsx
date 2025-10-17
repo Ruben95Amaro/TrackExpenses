@@ -2,9 +2,25 @@ import React, { useRef, useState } from "react";
 
 /**
  * Lê QR a partir de uma foto (ficheiro local).
-
+ * Suporta modo "headless" (sem botão/erros visíveis) para integrações externas.
+ *
+ * Props:
+ * - onDecoded(text)
+ * - onError?(message)
+ * - buttonLabel = "Ler QR da foto"
+ * - accept = "image/*"
+ * - renderMode = "button" | "headless"
+ *   (se buttonLabel === "hidden", assume "headless" para retrocompatibilidade)
  */
-export default function QRCodeFromPhoto({ onDecoded, buttonLabel = "Ler QR da foto", accept = "image/*" }) {
+export default function QRCodeFromPhoto({
+  onDecoded,
+  onError,
+  buttonLabel = "Ler QR da foto",
+  accept = "image/*",
+  renderMode,
+}) {
+  const mode = renderMode || (buttonLabel === "hidden" ? "headless" : "button");
+
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -18,7 +34,6 @@ export default function QRCodeFromPhoto({ onDecoded, buttonLabel = "Ler QR da fo
     setError(null);
 
     try {
-      // Import dinâmico para contornar o cache de deps do Vite
       const { BrowserQRCodeReader } = await import("@zxing/browser");
       const reader = new BrowserQRCodeReader();
 
@@ -30,10 +45,14 @@ export default function QRCodeFromPhoto({ onDecoded, buttonLabel = "Ler QR da fo
       if (typeof text === "string" && text.trim()) {
         onDecoded?.(text.trim());
       } else {
-        setError("Não consegui ler QR nesta imagem.");
+        const msg = "Não consegui ler QR nesta imagem.";
+        setError(mode === "button" ? msg : null);
+        onError?.(msg);
       }
-    } catch (err) {
-      setError("Não consegui ler o QR. Tenta outra foto (nítida, sem reflexos).");
+    } catch {
+      const msg = "Não consegui ler o QR. Tenta outra foto (nítida, sem reflexos).";
+      setError(mode === "button" ? msg : null);
+      onError?.(msg);
     } finally {
       setBusy(false);
       // permite re-escolher o mesmo ficheiro
@@ -41,8 +60,22 @@ export default function QRCodeFromPhoto({ onDecoded, buttonLabel = "Ler QR da fo
     }
   };
 
+  // Em headless: só o input (escondido)
+  if (mode === "headless") {
+    return (
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        onChange={handleFile}
+        hidden
+      />
+    );
+  }
+
+  // Modo com botão + feedback inline
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-3 min-w-0">
       <input ref={inputRef} type="file" accept={accept} onChange={handleFile} hidden />
       <button
         type="button"
@@ -52,7 +85,14 @@ export default function QRCodeFromPhoto({ onDecoded, buttonLabel = "Ler QR da fo
       >
         {busy ? "A ler…" : buttonLabel}
       </button>
-      {error && <span className="text-sm text-red-600">{error}</span>}
+      {error && (
+        <span
+          className="text-sm text-red-600 break-words"
+          style={{ overflowWrap: "anywhere", hyphens: "auto" }}
+        >
+          {error}
+        </span>
+      )}
     </div>
   );
 }

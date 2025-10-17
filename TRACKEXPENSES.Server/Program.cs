@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using System.Text;
+using System.Text.Json.Serialization;
 using TRACKEXPENSES.Server.Data;
 using TRACKEXPENSES.Server.Extensions;
 using TRACKEXPENSES.Server.Services;
@@ -38,11 +39,20 @@ builder.Services.AddCors(options =>
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
-        options.JsonSerializerOptions.WriteIndented = true;
+        // Evita $id/$ref e quebra os ciclos silenciosamente
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+
+        // Mantém PascalCase como o front espera
         options.JsonSerializerOptions.PropertyNamingPolicy = null;
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+
+        // (Opcional) não enviar propriedades null
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+
+        // (Opcional) só para DEV; em produção, desliga para reduzir payload
+        options.JsonSerializerOptions.WriteIndented = true;
     });
+
 
 builder.Services.Configure<SmtpOptions>(
     builder.Configuration.GetSection("Smtp"));

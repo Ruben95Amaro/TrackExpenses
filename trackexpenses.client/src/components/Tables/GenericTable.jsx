@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import { Pencil, LogOut, Trash2, DoorOpen } from "lucide-react";
 
 const safeHeader = (t, i18nPrefix, col) => {
   if (col.headerLabel) return col.headerLabel;
@@ -16,6 +17,7 @@ function IconButton({ title, className, onClick, children }) {
     <button
       type="button"
       title={title}
+      aria-label={title}
       onClick={onClick}
       className={`p-2 rounded-md hover:bg-white/10 transition ${className}`}
     >
@@ -23,6 +25,45 @@ function IconButton({ title, className, onClick, children }) {
     </button>
   );
 }
+
+/* ─── helpers de cor ─── */
+const parseHex = (hex) => {
+  const h = hex.replace("#", "");
+  const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+  const int = parseInt(full, 16);
+  return [(int >> 16) & 255, (int >> 8) & 255, int & 255];
+};
+const parseRgbString = (c) => {
+  const m = c.match(/rgba?\s*\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+  if (!m) return null;
+  return [Number(m[1]), Number(m[2]), Number(m[3])];
+};
+const toRgb = (c) => {
+  if (!c || typeof c !== "string") return null;
+  if (c.startsWith("#")) return parseHex(c);
+  if (c.startsWith("rgb")) return parseRgbString(c);
+  return null;
+};
+const luminance = ([r, g, b]) => {
+  const f = (v) => {
+    v /= 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const [R, G, B] = [f(r), f(g), f(b)];
+  return 0.2126 * R + 0.7152 * G + 0.0722 * B;
+};
+const resolveIsDark = (theme) => {
+  const explicit =
+    theme?.palette?.mode ||
+    theme?.mode ||
+    theme?.appearance ||
+    theme?.colorScheme;
+  if (explicit) return String(explicit).toLowerCase() === "dark";
+  const txt = theme?.colors?.text?.primary;
+  const rgb = toRgb(txt || "");
+  if (rgb) return luminance(rgb) > 0.6; // texto claro => fundo escuro
+  return true;
+};
 
 export default function GenericTable({
   filteredData,
@@ -58,10 +99,15 @@ export default function GenericTable({
   };
 
   const handleDeleteClick = async (row) => {
+    const isLogout = remove?.icon === "logout" || remove?.icon === "door";
+    const defaultMsg = isLogout
+      ? (t ? t("groups.confirm_leave") : "Sair deste grupo?")
+      : (t ? t("common.confirmDelete") : "Tens a certeza que queres apagar?");
     const msg =
       remove?.getConfirmMessage?.(row) ||
       remove?.confirmMessage ||
-      (t ? t("common.confirmDelete") : "Tens a certeza que queres apagar?");
+      defaultMsg;
+
     const ok = window.confirm(msg);
     if (!ok) return;
 
@@ -74,12 +120,49 @@ export default function GenericTable({
     }
   };
 
-  const BORDER = "rgba(255,255,255,0.8)";
+  /* ─── cores por modo ─── */
+  const isDark = resolveIsDark(theme);
+  const BORDER = isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)";
   const BORDER_WIDTH = "2px";
-  const PAPER  = theme?.colors?.background?.paper || "rgba(17,24,39,0.8)";
-  const TXT    = theme?.colors?.text?.primary || "#F8FAFC";
-  const HEADTX = theme?.colors?.primary?.light || "#60A5FA";
-  const ROWSEP = "rgba(255,255,255,0.22)";
+  const ROWSEP = isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.14)";
+
+  const PAPER =
+    theme?.colors?.background?.paper ??
+    (isDark ? "rgba(17,24,39,0.8)" : "rgba(255,255,255,0.6)");
+
+  const TXT =
+    theme?.colors?.text?.primary ?? (isDark ? "#0F172A" : "#0F172A"); // body text
+
+  // >>> Header azul (bg)
+  const HEADBG =
+    theme?.colors?.tableHeader?.bg ??
+    (isDark
+      ? theme?.colors?.primary?.dark || "#0B3EA8" // azul fechado no dark
+      : theme?.colors?.primary?.main || "#1D4ED8"); // azul forte no light
+
+  const HEADTX =
+    theme?.colors?.tableHeader?.text ?? (isDark ? "#E5F0FF" : "#FFFFFF");
+
+  const HEAD_DIV = isDark ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.9)";
+
+  const ResolveRemoveIcon = ({ icon, ...props }) => {
+    if (icon === "logout") return <LogOut className="h-4 w-4" {...props} />;
+    if (icon === "door") return <DoorOpen className="h-4 w-4" {...props} />;
+    return <Trash2 className="h-4 w-4" {...props} />;
+  };
+
+  const editIconClass = isDark
+    ? "text-blue-300 hover:text-blue-200"
+    : "text-blue-700 hover:text-blue-800";
+  const logoutIconClass = isDark
+    ? "text-amber-300 hover:text-amber-200"
+    : "text-amber-700 hover:text-amber-800";
+  const trashIconClass = isDark
+    ? "text-red-300 hover:text-red-200"
+    : "text-red-700 hover:text-red-800";
+
+  const removeIconClass = (icon) =>
+    icon === "logout" || icon === "door" ? logoutIconClass : trashIconClass;
 
   return (
     <div
@@ -104,8 +187,8 @@ export default function GenericTable({
             <thead
               className={stickyHeader ? "sticky top-0 z-10" : ""}
               style={{
-                background: "inherit",
-                color: HEADTX,
+                background: HEADBG, 
+                color: HEADTX, 
                 backgroundClip: "padding-box",
               }}
             >
@@ -116,7 +199,7 @@ export default function GenericTable({
                     <th
                       key={col.key}
                       className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-center"
-                      style={{ borderBottom: `1px solid ${BORDER}` }}
+                      style={{ borderBottom: `1px solid ${HEAD_DIV}` }}
                     >
                       {header}
                     </th>
@@ -125,7 +208,7 @@ export default function GenericTable({
                 {hasActions && (
                   <th
                     className="px-6 py-3 text-xs font-semibold uppercase tracking-wider text-center"
-                    style={{ borderBottom: `1px solid ${BORDER}` }}
+                    style={{ borderBottom: `1px solid ${HEAD_DIV}` }}
                   >
                     {t ? t("common.actions") : "Ações"}
                   </th>
@@ -154,12 +237,19 @@ export default function GenericTable({
                 </tr>
               ) : (
                 rows.map((row, idx) => {
-                  const k = rowKey ? rowKey(row, idx) : idx;
+                  const rk = rowKey ? rowKey(row, idx) : undefined;
+const k =
+  rk ??
+  row?.Id ??
+  row?.id ??
+  row?.Email ??
+  row?.email ??
+  String(idx);
                   const isLast = idx === rows.length - 1;
 
                   return (
                     <tr
-                      key={k}
+                      key={String(k)}
                       className="transition-colors hover:bg-white/5"
                       style={{
                         borderBottom: isLast
@@ -199,20 +289,26 @@ export default function GenericTable({
                           <div className="flex items-center justify-center gap-2">
                             {edit?.enabled && (
                               <IconButton
-                                title={t ? t("common.edit") : "Editar"}
-                                className="text-blue-400"
+                                title={edit?.title || (t ? t("common.edit") : "Editar")}
+                                className={editIconClass}
                                 onClick={() => handleEditClick(row)}
                               >
-                                ✏️
+                                <Pencil className="h-4 w-4" strokeWidth={2.25} />
                               </IconButton>
                             )}
+
                             {remove?.enabled && (
                               <IconButton
-                                title={t ? t("common.delete") : "Apagar"}
-                                className="text-red-400"
+                                title={
+                                  remove?.title ||
+                                  (remove?.icon === "logout" || remove?.icon === "door"
+                                    ? (t ? t("groups.leave") : "Sair do grupo")
+                                    : (t ? t("common.delete") : "Apagar"))
+                                }
+                                className={removeIconClass(remove?.icon)}
                                 onClick={() => handleDeleteClick(row)}
                               >
-                                🗑️
+                                <ResolveRemoveIcon icon={remove?.icon} strokeWidth={2.25} />
                               </IconButton>
                             )}
                           </div>
@@ -252,14 +348,17 @@ GenericTable.propTypes = {
     onEdit: PropTypes.func,
     navigateTo: PropTypes.func,
     navigate: PropTypes.func,
+    title: PropTypes.string,
   }),
   remove: PropTypes.shape({
     enabled: PropTypes.bool,
-    getConfirmMessage: PropTypes.func, 
+    getConfirmMessage: PropTypes.func,
     confirmMessage: PropTypes.string,
     doDelete: PropTypes.func,
     onSuccess: PropTypes.func,
     onError: PropTypes.func,
+    title: PropTypes.string,
+    icon: PropTypes.oneOf(["logout", "door", "trash"]),
   }),
   rowKey: PropTypes.func,
   stickyHeader: PropTypes.bool,

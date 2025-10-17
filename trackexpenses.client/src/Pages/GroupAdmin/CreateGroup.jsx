@@ -15,15 +15,27 @@ export default function CreateGroup({ onSuccess }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { t } = useLanguage();
-  const { auth } = useContext(AuthContext) || {};
+  const { auth, setAuth, setRoles } = useContext(AuthContext) || {};
 
   const c = theme?.colors || {};
-  const paper = c.background?.paper || "#111827";
-  const border = c.menu?.border || "rgba(255,255,255,0.12)";
-  const text = c.text?.primary || "#E5E7EB";
-  const muted = c.text?.secondary || "#94A3B8";
+
+  const isDark = String(
+    theme?.mode ?? theme?.Mode ?? theme?.palette?.mode ?? theme?.appearance ?? ""
+  )
+    .toLowerCase()
+    .includes("dark");
+
+  const paper = c.background?.paper || (isDark ? "#111827" : "#ffffff");
+
+  const border =
+    isDark
+      ? c.menu?.border ?? "rgba(255,255,255,0.22)"
+      : c.menu?.borderLight ?? "rgba(0,0,0,0.60)";
+
+  const text = c.text?.primary || (isDark ? "#E5E7EB" : "#0b2540");
+  const muted = c.text?.secondary || (isDark ? "#94A3B8" : "#64748b");
   const errorCol = c.error?.main || "#EF4444";
-  const hover = c.menu?.hoverBg || "rgba(255,255,255,0.06)";
+  const hover = c.menu?.hoverBg || (isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)");
 
   const tr = (k, fallback) => {
     try { return k?.includes(".") ? t(k) : (k ?? fallback); }
@@ -33,7 +45,7 @@ export default function CreateGroup({ onSuccess }) {
   // ---- state
   const [name, setName] = useState("");
   const [memberInput, setMemberInput] = useState("");
-  const [members, setMembers] = useState([]); // [{id, email, name}]
+  const [members, setMembers] = useState([]); 
   const [busy, setBusy] = useState(false);
   const [memberBusy, setMemberBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -47,19 +59,40 @@ export default function CreateGroup({ onSuccess }) {
     return e;
   }, [name, memberInput, submitted]);
 
-  // ---- lookup + add (GET /User/GetProfile?UserEmail=...)
+  // ---- helpers roles
+  const pushLocalRoles = (rolesToAdd = []) => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("auth") || "{}") || {};
+      const user = raw.user || auth || {};
+      const current = Array.isArray(user.Roles) ? user.Roles : [];
+      const next = Array.from(
+        new Set(
+          [...current, ...rolesToAdd]
+            .filter(Boolean)
+            .map((r) => String(r).trim().toUpperCase())
+        )
+      );
+
+      const newUser = { ...user, Roles: next };
+      const newAuth = { ...(raw || {}), user: newUser };
+      localStorage.setItem("auth", JSON.stringify(newAuth));
+      setRoles?.(next);
+      setAuth?.(newUser);
+      try { window.dispatchEvent(new Event("token-refreshed")); } catch {}
+    } catch {}
+  };
+
+  // ---- lookup + add
   const lookupAndAddMember = async () => {
     setErr("");
     const email = memberInput.trim();
     if (!email || !isEmail(email)) return;
 
-    // evita duplicados
     if (members.some((m) => m.email.toLowerCase() === email.toLowerCase())) {
       setMemberInput("");
       return;
     }
 
-    // evita adicionar a si próprio
     if ((auth?.Email || "").toLowerCase() === email.toLowerCase()) {
       setErr(tr("groups.error_equal_email", "No need to add yourself."));
       return;
@@ -67,14 +100,10 @@ export default function CreateGroup({ onSuccess }) {
 
     setMemberBusy(true);
     try {
-      const res = await apiCall.get("/User/GetProfile", {
-        params: { UserEmail: email },
-        validateStatus: (s) => (s >= 200 && s < 300) || s === 404 || s === 400,
-      });
+      const res = await apiCall.get("/User/GetProfile", { params: { UserEmail: email } });
 
-      if (res?.status >= 200 && res?.status < 300 && res?.data) {
+      if (res?.ok && res?.data) {
         const u = res.data;
-
         const userId = u.Id ?? u.id ?? u.userId ?? u.guid ?? u._id;
         const first = u.firstName ?? u.FirstName ?? u.givenName ?? u?.user?.firstName;
         const last  = u.lastName  ?? u.FamilyName ?? u.surname   ?? u?.user?.lastName;
@@ -88,13 +117,12 @@ export default function CreateGroup({ onSuccess }) {
           setMembers((m) => [...m, { id: String(userId), email, name: displayName }]);
           setMemberInput("");
         }
-      } else if (res?.status === 404 || res?.status === 400) {
+      } else if (res?.error?.status === 404 || res?.error?.status === 400) {
         setErr(tr("groups.errors_user_not_found", "User does not exist"));
       } else {
-        setErr(res?.data?.message || tr("groups.errors_lookup_failed", "Could not verify the user."));
+        setErr(res?.error?.message || tr("groups.errors_lookup_failed", "Could not verify the user."));
       }
-    } catch (e) {
-      console.error("[User/GetProfile] error:", e);
+    } catch {
       setErr(tr("groups.errors_lookup_failed", "Could not verify the user."));
     } finally {
       setMemberBusy(false);
@@ -103,7 +131,7 @@ export default function CreateGroup({ onSuccess }) {
 
   const removeMember = (email) => setMembers((m) => m.filter((x) => x.email !== email));
 
-  // ---- submit -> DTO { AdminEmail, GroupName, UsersId }
+  // ---- submit
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
@@ -125,19 +153,15 @@ export default function CreateGroup({ onSuccess }) {
 
     setBusy(true);
     try {
-      const res = await apiCall.post("/Group/Register", payload, {
-        validateStatus: () => true,
-      });
-
-      if (res?.status >= 200 && res?.status < 300) {
-        const created = res?.data || { ...payload };
+      const res = await apiCall.post("/Group/Register", payload);
+      if (res?.ok) {
+        pushLocalRoles(["GROUPADMINISTRATOR", "GROUPMEMBER"]);
+        const created = res.data || { ...payload };
         onSuccess ? onSuccess(created) : navigate("/GroupsList");
       } else {
-        console.error("[Group/Register] Failed:", res);
-        setErr(res?.data?.message || tr("groups.errors_create_failed", "Could not create the group."));
+        setErr(res?.error?.message || tr("groups.errors_create_failed", "Could not create the group."));
       }
-    } catch (e2) {
-      console.error("[Group/Register] Exception:", e2);
+    } catch {
       setErr(tr("groups.errors_create_failed", "Could not create the group."));
     } finally {
       setBusy(false);
@@ -162,7 +186,10 @@ export default function CreateGroup({ onSuccess }) {
         </div>
       )}
 
-      <Card className="rounded-2xl p-6" style={{ backgroundColor: paper, border: `1px solid ${border}` }}>
+      <Card
+        className="rounded-2xl p-6"
+        style={{ backgroundColor: paper, border: `1px solid ${border}` }}
+      >
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Name */}
           <Input
@@ -195,11 +222,10 @@ export default function CreateGroup({ onSuccess }) {
                 style={{
                   backgroundColor: paper,
                   color: text,
-                  borderColor: errors.memberInput ? errorCol : border,
+                  borderColor: errors.memberInput ? errorCol : border, 
                 }}
               />
 
-              {/* Botão "Add" com o mesmo tamanho (md) */}
               <Button
                 type="button"
                 size="md"

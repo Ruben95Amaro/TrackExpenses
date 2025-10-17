@@ -4,6 +4,7 @@ import { Search as SearchIcon, ChevronDown, X } from "lucide-react";
 
 const cx = (...xs) => xs.filter(Boolean).join(" ");
 
+/* ===== helpers de tema ===== */
 const paperBg = (theme) => theme?.colors?.background?.paper || "transparent";
 const ringColor = (theme) =>
   theme?.colors?.secondary?.light || "rgba(148,163,184,0.25)";
@@ -12,14 +13,21 @@ const capsuleBg = (theme) =>
 const textMain = (theme) => theme?.colors?.text?.primary || "#ffffff";
 const textMuted = (theme) =>
   theme?.colors?.text?.secondary || "rgba(255,255,255,0.85)";
+const isDarkMode = (t) => {
+  const m =
+    t?.isDark ??
+    t?.mode ??
+    t?.palette?.mode ??
+    t?.colors?.mode;
+  if (typeof m === "boolean") return m;
+  if (typeof m === "string") return m.toLowerCase() === "dark";
+  return false;
+};
 
 /* ===== cápsulas reutilizáveis ===== */
 function FieldLabel({ children, theme }) {
   return (
-    <label
-      className="text-xs select-none block mb-1"
-      style={{ color: textMuted(theme) }}
-    >
+    <label className="text-xs select-none block mb-1" style={{ color: textMuted(theme) }}>
       {children}
     </label>
   );
@@ -28,10 +36,7 @@ function FieldLabel({ children, theme }) {
 function Capsule({ children, theme, className }) {
   return (
     <div
-      className={cx(
-        "relative h-[52px] rounded-2xl ring-1 overflow-hidden",
-        className
-      )}
+      className={cx("relative h-[52px] rounded-2xl ring-1 overflow-hidden", className)}
       style={{ background: capsuleBg(theme), borderColor: ringColor(theme) }}
     >
       {children}
@@ -153,7 +158,6 @@ function SelectCapsule({
   );
 }
 
-
 export default function GenericFilter({
   value = { q: "" },
   onChange = () => {},
@@ -178,9 +182,7 @@ export default function GenericFilter({
     if (!multiple) return setField(key, nextVal);
     const prev = Array.isArray(safeValue[key]) ? safeValue[key] : [];
     const exists = prev.includes(nextVal);
-    const nextArr = exists
-      ? prev.filter((v) => v !== nextVal)
-      : [...prev, nextVal];
+    const nextArr = exists ? prev.filter((v) => v !== nextVal) : [...prev, nextVal];
     setField(key, nextArr);
   };
 
@@ -191,8 +193,7 @@ export default function GenericFilter({
     });
     onChange(cleared);
   };
-  const doClear = () =>
-    typeof onClear === "function" ? onClear() : clearAll();
+  const doClear = () => (typeof onClear === "function" ? onClear() : clearAll());
 
   const fieldWrap = "flex flex-col gap-1 min-w-[260px] grow basis-[280px]";
 
@@ -200,10 +201,7 @@ export default function GenericFilter({
     const isMultiple = !!f.multiple;
     const current = safeValue[f.key];
 
-    const wrapCls =
-      f.fullWidth === false
-        ? "flex flex-col gap-1 shrink-0 w-auto"
-        : fieldWrap;
+    const wrapCls = f.fullWidth === false ? "flex flex-col gap-1 shrink-0 w-auto" : fieldWrap;
 
     if (f.type === "custom" && typeof f.render === "function") {
       return (
@@ -225,10 +223,7 @@ export default function GenericFilter({
           {f.label && <FieldLabel theme={theme}>{f.label}</FieldLabel>}
           <div
             className="rounded-2xl ring-1 p-2 max-h-44 overflow-auto space-y-1"
-            style={{
-              borderColor: ringColor(theme),
-              background: capsuleBg(theme),
-            }}
+            style={{ borderColor: ringColor(theme), background: capsuleBg(theme) }}
           >
             {(f.options || []).map((opt) => {
               const checked = arr.includes(opt.value);
@@ -269,6 +264,11 @@ export default function GenericFilter({
     );
   };
 
+  /* cores do botão Clear por modo */
+  const clearBg = isDarkMode(theme)
+    ? "rgba(12,22,40,0.82)"      // DARK: mais escuro
+    : "rgba(148,163,184,0.34)";  // LIGHT: mais cinzento
+
   return (
     <div className={cx("w-full", className)}>
       <div className="w-full flex justify-start mb-3 relative z-[5] flex-wrap gap-2">
@@ -294,9 +294,8 @@ export default function GenericFilter({
                 : t?.("common.showFilters") || "Filters"}
             </span>
             <ChevronDown
-              className={`w-4 h-4 ml-2 opacity-70 transition-transform ${
-                open ? "rotate-180" : ""
-              }`}
+              className={`w-4 h-4 ml-2 opacity-70 transition-transform ${open ? "rotate-180" : ""}`}
+              style={{ color: textMain(theme) }}
             />
           </button>
         )}
@@ -308,16 +307,11 @@ export default function GenericFilter({
           role="region"
           aria-label={t ? t("common.filters") : "Filters"}
           className="w-full rounded-3xl ring-1 px-4 py-4"
-          style={{
-            background: paperBg(theme),
-            borderColor: ringColor(theme),
-          }}
+          style={{ background: paperBg(theme), borderColor: ringColor(theme) }}
         >
           <div
             className="grid gap-3 items-start"
-            style={{
-              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            }}
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}
           >
             {showSearch && (
               <div className={fieldWrap}>
@@ -340,8 +334,15 @@ export default function GenericFilter({
             <button
               type="button"
               onClick={doClear}
-              className="h-11 px-6 rounded-2xl font-medium"
-              style={{ background: "rgba(255,255,255,0.80)", color: "#111827" }}
+              className="h-11 px-6 rounded-2xl font-medium transition-colors hover:brightness-95 active:brightness-90 shadow-sm"
+              style={{
+                background: clearBg,
+                border: `1px solid ${ringColor(theme)}`,
+                color: textMain(theme),
+                boxShadow: isDarkMode(theme)
+                  ? "inset 0 1px 0 rgba(255,255,255,.03)"
+                  : "inset 0 1px 0 rgba(0,0,0,.05)",
+              }}
               title={t ? t("common.clear") : "Clear"}
             >
               {t ? t("common.clear") : "Clear"}

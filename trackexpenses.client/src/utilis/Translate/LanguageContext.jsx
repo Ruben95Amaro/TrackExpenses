@@ -393,7 +393,7 @@ const translations = {
   },
 
   qr: {
-    title: "Read invoice QR (Portugal)",
+    title: "Read invoice QR",
     subtitle: "Upload a clear photo of the QR. I'll auto-fill date, value and description.",
     readFromPhoto: "Read QR from photo",
   },

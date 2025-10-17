@@ -134,11 +134,16 @@ export default function SideBar({
         .toUpperCase()
     );
 
+  // aceitar role como string OU array
+  const allowList = (role) =>
+    Array.isArray(role) ? role.filter(Boolean) : role ? [role] : ["USER"];
+
   const canSee = (item) => {
     if (!item || item.visible === false) return false;
     if (item.requiresPremium && !premiumOk) return false;
-    if (!item.role || item.role === "USER") return true;
-    return userRoles.includes(item.role);
+    const list = allowList(item.role);
+    if (list.includes("USER")) return true;
+    return list.some((r) => userRoles.includes(r));
   };
 
   const sectionOfRole = (role) => {
@@ -158,13 +163,17 @@ export default function SideBar({
     }
   };
 
-  /* ========== AGRUPAMENTO DE SEÇÕES ========== */
+  /* ========== AGRUPAMENTO DE SEÇÕES (com deduplicação) ========== */
   const sections = useMemo(() => {
     const buckets = new Map();
+    const seen = new Set();
     const push = (title, item) => {
       const key =
         typeof title === "string" && title.includes(".") ? tr(title) : title;
       const secTitle = key || (tr("common.user") || "Users");
+      const sig = `${item.to || ""}|${item.label || ""}|${secTitle}`;
+      if (seen.has(sig)) return;
+      seen.add(sig);
       if (!buckets.has(secTitle)) buckets.set(secTitle, []);
       buckets.get(secTitle).push(item);
     };
@@ -202,10 +211,11 @@ export default function SideBar({
           </div>
         )}
 
-        {list.map(({ to, icon: Icon, label, onClick }) => {
+        {list.map(({ to, icon: Icon, label, onClick }, idx) => {
           const active = to
             ? loc.pathname.toLowerCase().startsWith(to.toLowerCase())
             : false;
+          const key = `${to || ""}::${label || ""}::${idx}`; // key única
           const content = (
             <div
               className="relative mx-2 mb-1 flex items-center gap-3 px-3 py-2 rounded transition-colors"
@@ -239,12 +249,12 @@ export default function SideBar({
           );
 
           return to ? (
-            <Link key={to} to={to}>
+            <Link key={key} to={to}>
               {content}
             </Link>
           ) : (
             <button
-              key={label}
+              key={key}
               type="button"
               className="w-full text-left"
               onClick={onClick}
@@ -296,7 +306,7 @@ export default function SideBar({
       {/* navegação */}
       <nav className="flex-1 overflow-y-auto py-2">
         {sections.map((s, idx) => (
-          <Section key={s.title} title={s.title} list={s.list} first={idx === 0} />
+          <Section key={`${s.title}::${idx}`} title={s.title} list={s.list} first={idx === 0} />
         ))}
       </nav>
 

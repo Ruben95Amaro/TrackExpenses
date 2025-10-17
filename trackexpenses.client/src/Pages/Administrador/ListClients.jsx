@@ -32,6 +32,7 @@ export default function UsersTable() {
           res?.data?.ListUsers?.$values ??
           res?.data?.ListUsers ??
           [];
+        console.log('list', list)
         if (alive) setUsers(Array.isArray(list) ? list : []);
       } catch (e) {
         if (alive)

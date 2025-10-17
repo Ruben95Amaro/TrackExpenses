@@ -13,11 +13,9 @@ import NotRequireAuth from "./services/Authentication/NotRequire";
 import { AuthTimer_resume } from "./services/MicroServices/AuthTime";
 
 import {
-  LineChart,   // dashboard / group dashboard
+  LineChart,         // dashboards
   Users,             // users / groups
-  UserCog,           // group admin / settings
-  Shield,            // admin dashboard
-ShoppingCart,         // expenses
+  ShoppingCart,      // expenses
   CircleDollarSign,  // earnings
   Wallet,            // wallets
   CalendarDays,      // calendar
@@ -49,7 +47,6 @@ import PremiumChoicePage from "./Pages/Premium/Prices";
 import AddUser from "./Pages/Administrador/AddUser";
 import RequireRoles from "./services/Authentication/RequireRoles";
 import GroupAdminPage from "./Pages/GroupAdmin/GroupAdminPage";
-import GroupsList from "./Pages/GroupAdmin/GroupsList";
 import CreateGroup from "./Pages/GroupAdmin/CreateGroup";
 import ActivationAccount  from "./services/Authentication/ActivateAccount";
 import DeleteAccount from "./services/Authentication/DeleteAccount";
@@ -58,7 +55,8 @@ import ListWallets from "./Pages/Wallet/ListWallets";
 import EditWallet from "./Pages/Wallet/EditWallet";
 import CreateWallet from "./Pages/Wallet/CreateWallet";
 import WalletGate from "./services/Authentication/WalletGate";
-import ListGroups from "./Pages/GroupAdmin/GroupsList";
+
+import GroupsList from "./Pages/GroupAdmin/GroupsList";
 
 function normalizeGroups(raw) {
   if (!raw) return [];
@@ -106,8 +104,8 @@ async function fetchAdminGroups() {
 export default function App() {
   const { theme } = useTheme();
   const { t } = useLanguage();
-  const { roles, isAuthenticated, auth } = useContext(AuthContext);
-
+  const { roles, isAuthenticated } = useContext(AuthContext);
+  
   useEffect(() => {
     AuthTimer_resume({ earlyMs: 30_000, graceMs: 5000 });
   }, []);
@@ -126,7 +124,6 @@ export default function App() {
       setFirstAdminGroupId(null);
       return;
     }
-
     (async () => {
       const list = await fetchAdminGroups();
       if (!alive) return;
@@ -136,9 +133,9 @@ export default function App() {
     return () => { alive = false; };
   }, [roles]);
 
-  // Menu
-  const items = useMemo(
-    () => [
+  // MENU
+  const items = useMemo(() => {
+    const out = [
       {
         to: "/admin/dashboard",
         icon: LineChart,
@@ -153,70 +150,37 @@ export default function App() {
         role: "ADMINISTRATOR",
         section: "ADMIN",
       },
+    ];
 
-      firstAdminGroupId
-        ? {
-            to: `/groups/${firstAdminGroupId}/dashboard`,
-            icon: LineChart,
-            label: "common.group_dashboard",
-            role: "GROUPADMINISTRATOR",
-            section: "GROUPS",
-          }
-        : {
-            to: "/GroupsList",
-            icon: Users,
-            label: "common.group_dashboard",
-            role: ["GROUPADMINISTRATOR", "GROUPMEMBER"],
-            section: "GROUPS",
-          },
-    
-      {
-        to: "/GroupsList",
-        icon: Users,
-        label: "common.group_list",
-        role: "USER",
-        section: "GROUPS",
-      },
-      {
-        to: "/ListWallets",
-        icon: Wallet,
-        label: "common.listWallets",
-        role: "USER",
-        section: "FINANCES",
-      },
-
-      {
-        to: "/Dashboard",
+    if (firstAdminGroupId) {
+      out.push({
+        to: `/groups/${firstAdminGroupId}/dashboard`,
         icon: LineChart,
-        label: "common.dashboard",
-        role: "USER",
-        section: "FINANCES",
-      },
-      {
-        to: "/Expenses",
-        icon: ShoppingCart,
-        label: "common.expenses",
-        role: "USER",
-        section: "FINANCES",
-      },
-      {
-        to: "/Earnings",
-        icon: CircleDollarSign,
-        label: "common.earnings",
-        role: "USER",
-        section: "FINANCES",
-      },
-      
-      {
-        to: "/Calendar",
-        icon: CalendarDays,
-        label: "common.calendar",
-        role: "USER",
-        section: "FINANCES",
-      },
-    ],
-    [t, roles, firstAdminGroupId]
-  );
+        label: "common.group_dashboard",
+        role: "GROUPADMINISTRATOR",
+        section: "GROUPS",
+      });
+    }
+
+    // único item para a lista de grupos (admin e member)
+    out.push({
+      to: "/GroupsList",
+      icon: Users,
+      label: "common.group_list",
+      role: ["GROUPADMINISTRATOR", "GROUPMEMBER"],
+      section: "GROUPS",
+    });
+
+    out.push(
+      { to: "/ListWallets", icon: Wallet, label: "common.listWallets", role: "USER", section: "FINANCES" },
+      { to: "/Dashboard", icon: LineChart, label: "common.dashboard", role: "USER", section: "FINANCES" },
+      { to: "/Expenses", icon: ShoppingCart, label: "common.expenses", role: "USER", section: "FINANCES" },
+      { to: "/Earnings", icon: CircleDollarSign, label: "common.earnings", role: "USER", section: "FINANCES" },
+      { to: "/Calendar", icon: CalendarDays, label: "common.calendar", role: "USER", section: "FINANCES" },
+    );
+
+    return out;
+  }, [t, roles, firstAdminGroupId]);
 
   return (
     <AppShell
@@ -231,6 +195,7 @@ export default function App() {
         <Route path="/" element={<Welcome />} />
         <Route path="*" element={<Welcome />} />
 
+        {/* ---------- PÚBLICO (não autenticado) ---------- */}
         <Route element={<NotRequireAuth />}>
           <Route path="/Login" element={<Login />} />
           <Route path="/Register" element={<SignIn />} />
@@ -240,29 +205,36 @@ export default function App() {
           <Route path="/DeleteAccount" element={<DeleteAccount />} />
         </Route>
 
-        <Route element={<RequireRoles allow={["PREMIUM", "GROUPADMINISTRATOR"]} />}>
-          <Route path="/Groups/Edit/:id" element={<GroupsEdit />} />
-          <Route path="/GroupAdminPage" element={<GroupAdminPage />} />
-          <Route path="/GroupsList" element={<GroupsList />} />
-          <Route path="/CreateGroup" element={<CreateGroup />} />
-          <Route path="/ListGroups" element={<ListGroups />} />
-          
-        </Route>
-
+        {/* ---------- ÁREA AUTENTICADA ---------- */}
         <Route element={<RequireAuth />}>
-          <Route element={
-            <WalletGate
-              redirectTo="/ListWallets"
-              delayMs={5200}
-              skipPaths={["/ListWallets", "/auth"]}
-            />
-          }>
+
+          {/*  FORA do WalletGate — grupos que não devem redirecionar */}
+          <Route element={<RequireRoles allow={["GROUPADMINISTRATOR", "GROUPMEMBER"]} />}>
+            <Route path="/GroupsList" element={<GroupsList />} />
+          </Route>
+
+          <Route element={<RequireRoles allow="GROUPADMINISTRATOR" />}>
+            <Route path="/groups/:groupId/dashboard" element={<GroupDashboard />} />
+          </Route>
+
+          {/*  DENTRO do WalletGate — resto que depende de ter carteira */}
+          <Route
+            element={
+              <WalletGate
+                redirectTo="/ListWallets"
+                delayMs={5200}
+                skipPaths={["/ListWallets", "/auth"]}
+              />
+            }
+          >
+            <Route element={<RequireRoles allow={["PREMIUM", "GROUPADMINISTRATOR"]} />}>
+              <Route path="/Groups/Edit/:id" element={<GroupsEdit />} />
+              <Route path="/GroupAdminPage" element={<GroupAdminPage />} />
+              <Route path="/CreateGroup" element={<CreateGroup />} />
+            </Route>
+
             <Route path="/EditWallet/:id" element={<EditWallet />} />
             <Route path="/Dashboard" element={<Dashboard />} />
-
-            <Route element={<RequireRoles allow="GROUPADMINISTRATOR" />}>
-              <Route path="/groups/:groupId/dashboard" element={<GroupDashboard />} />
-            </Route>
 
             <Route element={<RequireRoles allow="ADMINISTRATOR" />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />

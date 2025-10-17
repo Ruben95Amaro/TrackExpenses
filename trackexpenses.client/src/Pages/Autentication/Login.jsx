@@ -4,10 +4,7 @@ import { useTheme } from "../../styles/Theme/Theme";
 import { Lock, Mail } from "lucide-react";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
-import {
-  setAuthFromApiPayload,
-  AuthTimer_start,
-} from "../../services/MicroServices/AuthTime";
+import { setAuthFromApiPayload, AuthTimer_start } from "../../services/MicroServices/AuthTime";
 
 import Card from "../../components/UI/Card";
 import Input from "../../components/Form/Input";
@@ -20,6 +17,19 @@ const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [submitting, setSubmitting] = useState(false);
   const [errorSubmit, setErrorSubmit] = useState(null);
+
+  const scheme =
+    (theme?.mode ||
+      theme?.appearance ||
+      theme?.scheme ||
+      theme?.palette?.mode ||
+      theme?.colors?.mode ||
+      theme?.name ||
+      "").toString().toLowerCase();
+  const isLight =
+    theme?.isLight === true || theme?.isDark === false || scheme.includes("light");
+
+  const CARD_BORDER = isLight ? "rgba(0,0,0,0.78)" : "rgba(255,255,255,0.78)";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,8 +71,14 @@ const Login = () => {
 
   return (
     <div className="flex items-center justify-center px-4 sm:px-6 lg:px-8">
-      <Card className="max-w-md w-full p-8 rounded-2xl shadow-2xl">
-        {/* Title + Subtitle */}
+      <Card
+        className="max-w-md w-full p-8 rounded-2xl shadow-2xl"
+        style={{
+          backgroundColor: theme?.colors?.background?.paper,
+          border: `1.5px solid ${CARD_BORDER}`,
+          boxShadow: `0 25px 50px -12px ${theme?.colors?.primary?.dark}3D`,
+        }}
+      >
         <div className="text-center mb-8">
           <h2
             className="text-3xl font-bold mb-2"
@@ -70,40 +86,30 @@ const Login = () => {
           >
             LOGIN
           </h2>
-          <p
-            className="text-sm"
-            style={{ color: theme?.colors?.text?.secondary }}
-          >
+          <p className="text-sm" style={{ color: theme?.colors?.text?.secondary }}>
             Enter your credentials to access your account
           </p>
         </div>
 
         <form className="space-y-6" onSubmit={handleSubmit}>
-          {/* Email */}
           <Input
             label="Email"
             type="email"
             value={formData.email}
             placeholder="Enter your email"
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             icon={<Mail className="h-5 w-5" />}
           />
 
-          {/* Password */}
           <Input
             label="Password"
             type="password"
             value={formData.password}
             placeholder="Enter your password"
-            onChange={(e) =>
-              setFormData({ ...formData, password: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             icon={<Lock className="h-5 w-5" />}
           />
 
-          {/* Forgot password */}
           <div className="mt-2 text-center">
             <Link
               to="/ForgotPassword"
@@ -114,7 +120,6 @@ const Login = () => {
             </Link>
           </div>
 
-          {/* Login button */}
           <Button
             type="submit"
             size="md"
@@ -127,18 +132,13 @@ const Login = () => {
             {submitting ? "Signing in..." : "Login"}
           </Button>
 
-          {/* Error message */}
           {errorSubmit && (
-            <p
-              className="text-center text-sm mt-2"
-              style={{ color: theme?.colors?.error?.main }}
-            >
+            <p className="text-center text-sm mt-2" style={{ color: theme?.colors?.error?.main }}>
               {errorSubmit}
             </p>
           )}
         </form>
 
-        {/* Register link */}
         <div className="mt-8 text-center">
           <Link
             to="/Register"

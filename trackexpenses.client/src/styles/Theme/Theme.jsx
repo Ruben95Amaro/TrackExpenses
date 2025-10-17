@@ -5,68 +5,69 @@ const ThemeContext = createContext();
 const lightTheme = {
   colors: {
     primary: {
-      main: "#2563EB",
-      light: "#60A5FA",
-      dark: "#1E40AF",
+      main: "#1D4ED8",   
+      light: "#2A6CFF",  
+      dark: "#1E40AF",   
     },
     secondary: {
-      main: "#6B7280",
-      light: "#E5E7EB",
-      dark: "#374151",
+      main: "#4B5563",   
+      light: "#D1D5DB", 
+      dark: "#1F2937",   
     },
     background: {
-      default: "#F8FAFC",
-      paper: "#FFFFFF",
+      default: "#FAFAFA", 
+      paper: "#FAFAFA",  
     },
     menu: {
-      bg: "#FFFFFF",
-      border: "#E5E7EB", // cinza claro
-      text: "#1F2937", // slate-800 → texto principal mais escuro
-      muted: "#4B5563", // slate-600 → texto secundário com bom contraste
-      hoverBg: "rgba(0,0,0,0.04)",
-      activeBg: "rgba(59,130,246,0.12)",
-      activeText: "#2563EB",
+      bg: "#F1F5F9",                      
+      border: "#CBD5E1",                  
+      text: "#111827",                  
+      muted: "#374151",                   
+      hoverBg: "rgba(0,0,0,0.06)",       
+      activeBg: "rgba(59,130,246,0.18)",  
+      activeText: "#1D4ED8",             
     },
     text: {
-      primary: "#0F172A",
-      secondary: "#475569",
+      primary: "#0F172A",  
+      secondary: "#334155",
     },
     success: {
-      main: "#16A34A",
-      light: "#DCFCE7",
+      main: "#15803D", 
+      light: "#CBEFD9",
     },
     error: {
-      main: "#DC2626",
-      light: "#FEE2E2",
+      main: "#B91C1C", 
+      light: "#FBD5D5",
     },
     card: {
-      bg: "#FFFFFF",
-      border: "#E2E8F0",
-      shadow: "rgba(0, 0, 0, 0.05)",
+      bg: "#FAFAFA",                    
+      border: "#CBD5E1",                 
+      shadow: "rgba(0, 0, 0, 0.08)",    
     },
     input: {
-      bg: "#FFFFFF",
-      border: "#CBD5E1",
-      focus: "#2563EB",
-      placeholder: "#94A3B8",
+      bg: "#FAFAFA",     
+      border: "#94A3B8", 
+      focus: "#1D4ED8",  
+      placeholder: "#64748B",
     },
     button: {
       primary: {
-        bg: "#2563EB",
-        hover: "#1D4ED8",
+        bg: "#1D4ED8",   
+        hover: "#1E40AF",
         text: "#FFFFFF",
       },
       secondary: {
-        bg: "#F1F5F9",
-        hover: "#E2E8F0",
-        text: "#1E293B",
+        bg: "#E5E7EB",   
+        hover: "#CBD5E1",
+        text: "#0F172A", 
       },
     },
     premium: {
-      gold: "#FFD700", // também dourado, fica bem no dark
+      gold: "#E6C200", 
     },
   },
 };
+
 
 const darkTheme = {
   colors: {
@@ -129,7 +130,7 @@ const darkTheme = {
       },  
     },
     premium: {
-      gold: "#FFD700", // também dourado, fica bem no dark
+      gold: "#FFD700",
     },
   },
 };

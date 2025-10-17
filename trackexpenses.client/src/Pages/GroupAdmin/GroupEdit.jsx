@@ -1,4 +1,3 @@
-// src/pages/Groups/GroupsEdit.jsx
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Title from "../../components/Titles/TitlePage";
@@ -36,8 +35,8 @@ export default function GroupsEdit() {
 
   const [name, setName] = useState("");
   const [memberInput, setMemberInput] = useState("");
-  const [members, setMembers] = useState([]);  // [{id,email,name}]
-  const [admin, setAdmin] = useState(null);    // {id,email,name}
+  const [members, setMembers] = useState([]);  
+  const [admin, setAdmin] = useState(null);    
 
   // roles/permissões
   const roles = useMemo(() => {
@@ -67,8 +66,8 @@ export default function GroupsEdit() {
     setLoading(true);
     setErr("");
     try {
-      const res = await apiCall.get("/Group/Get", { params: { id }, validateStatus: () => true });
-      if (!(res?.status >= 200 && res?.status < 300) || !res?.data) {
+      const res = await apiCall.get("/Group/Get", { params: { id } });
+      if (!(res?.ok) || !res?.data) {
         setErr(tr("groups.not_found", "Group not found."));
         return;
       }
@@ -85,13 +84,12 @@ export default function GroupsEdit() {
       const filtered = normalized.filter(m => m.id && m.id !== adminId);
       setMembers(filtered);
     } catch (e) {
-      console.error("[GroupsEdit] load error:", e);
       setErr(tr("groups.load_failed", "Could not load the group."));
     } finally {
       setLoading(false);
     }
   };
-  useEffect(() => { if (id) load(); /* eslint-disable-line */ }, [id]);
+  useEffect(() => { if (id) load(); }, [id]);
 
   const addByEmail = async () => {
     setErr("");
@@ -106,11 +104,10 @@ export default function GroupsEdit() {
     try {
       setBusy(true);
       const res = await apiCall.get("/User/GetProfile", {
-        params: { UserEmail: email },
-        validateStatus: (s) => (s >= 200 && s < 300) || s === 404 || s === 400
+        params: { UserEmail: email }
       });
 
-      if (res?.status >= 200 && res?.status < 300 && res?.data) {
+      if (res?.ok && res?.data) {
         const u = res.data;
         const obj = toMemberObj({
           id: u?.Id ?? u?.id ?? u?.userId ?? u?.guid ?? u?._id,
@@ -124,10 +121,10 @@ export default function GroupsEdit() {
           setMembers(prev => [...prev, obj]);
           setMemberInput("");
         }
-      } else if (res?.status === 404 || res?.status === 400) {
+      } else if (res?.error?.status === 404 || res?.error?.status === 400) {
         setErr(tr("groups.errors_user_not_found", "User does not exist"));
       } else {
-        setErr(res?.data?.message || tr("groups.errors_lookup_failed", "Could not verify the user."));
+        setErr(res?.error?.message || tr("groups.errors_lookup_failed", "Could not verify the user."));
       }
     } catch {
       setErr(tr("groups.errors_lookup_failed", "Could not verify the user."));
@@ -165,18 +162,16 @@ export default function GroupsEdit() {
           usp.set("name", params.name);
           (params.usersId || []).forEach((v) => usp.append("usersId", v));
           return usp.toString();
-        },
-        validateStatus: () => true
+        }
       });
 
-      if (res?.status >= 200 && res?.status < 300) {
+      if (res?.ok) {
         window.alert(tr("groups.saved", "Group saved."));
         navigate(-1);
       } else {
-        setErr(res?.data?.message || tr("groups.save_failed", "Could not save the group."));
+        setErr(res?.error?.message || tr("groups.save_failed", "Could not save the group."));
       }
     } catch (e) {
-      console.error("[GroupsEdit] save error:", e);
       setErr(tr("groups.save_failed", "Could not save the group."));
     } finally {
       setBusy(false);

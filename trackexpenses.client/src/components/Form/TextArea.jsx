@@ -37,6 +37,10 @@ export default function TextArea({
           color: c.text?.primary,
           borderColor,
           boxShadow: "0 0 0 0 rgba(0,0,0,0)",
+          resize: "vertical",
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
+          hyphens: "auto",
           ...style,
         }}
         onFocus={(e) => {

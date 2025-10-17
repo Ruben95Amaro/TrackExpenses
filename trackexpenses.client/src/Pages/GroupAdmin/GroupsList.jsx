@@ -1,4 +1,3 @@
-// src/pages/Groups/ListGroups.jsx
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Title from "../../components/Titles/TitlePage";
@@ -114,6 +113,7 @@ export default function ListGroups() {
   }, [groups, flt]);
 
   const doEdit = (g) => {
+    if (!isGroupAdmin) return; 
     const id = g?.id ?? g?.Id;
     if (!id) return;
     navigate(`/Groups/Edit/${id}`);
@@ -156,18 +156,21 @@ export default function ListGroups() {
     <div className="space-y-6 min-h-screen">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title text={t?.("groups.list") || "Groups"} />
-        <Button
-          variant="primary"
-          size="md"
-          fullWidth={false}
-          onClick={() => navigate("/CreateGroup")}
-          className="shrink-0"
-        >
-          {t?.("groups.new") || "New group"}
-        </Button>
+        {/* Só admins criam grupos */}
+        {isGroupAdmin && (
+          <Button
+            variant="primary"
+            size="md"
+            fullWidth={false}
+            onClick={() => navigate("/CreateGroup")}
+            className="shrink-0"
+          >
+            {t?.("groups.new") || "New group"}
+          </Button>
+        )}
       </div>
 
-      {/* Filtro com labels alinhados (Search + Groups) */}
+      {/* Filtro */}
       <GenericFilter
         className="mt-2"
         value={flt}
@@ -206,37 +209,40 @@ export default function ListGroups() {
             edit={{
               enabled: isGroupAdmin,
               onEdit: doEdit,
+              title: t?.("common.edit") || "Edit",
             }}
-            remove={{
-              enabled: true,
-              confirmMessage: isGroupAdmin
-                ? (t?.("groups.confirm_delete") ||
-                    "Are you sure you want to delete this group?")
-                : (t?.("groups.confirm_leave") || "Leave this group?"),
-              doDelete: async (g) => {
-                const id = g?.id ?? g?.Id;
-                if (!id) return false;
-                const endpoint = isGroupAdmin ? "/Group/Delete" : "/Group/Leave";
-                const res = await apiCall.delete(endpoint, {
-                  params: { id },
-                  validateStatus: () => true,
-                });
-                if (res?.status >= 200 && res?.status < 300) {
-                  setGroups((prev) =>
-                    prev.filter((x) => (x.id ?? x.Id) !== id)
-                  );
-                  return true;
-                }
-                return false;
-              },
-              onError: (err) =>
-                window.alert(
-                  err?.message ||
-                    (isGroupAdmin
-                      ? "Could not delete the group."
-                      : "Could not leave the group.")
-                ),
-            }}
+remove={{
+  enabled: true,
+  title: isGroupAdmin
+    ? (t?.("groups.delete") || "Delete")
+    : (t?.("groups.leave") || "Leave group"),
+  icon: isGroupAdmin ? "trash" : "logout", 
+  confirmMessage: isGroupAdmin
+    ? (t?.("groups.confirm_delete") ||
+        "Are you sure you want to delete this group?")
+    : (t?.("groups.confirm_leave") || "Leave this group?"),
+  doDelete: async (g) => {
+    const id = g?.id ?? g?.Id;
+    if (!id) return false;
+    const endpoint = isGroupAdmin ? "/Group/Delete" : "/Group/Leave";
+    const res = await apiCall.delete(endpoint, {
+      params: { id },
+      validateStatus: () => true,
+    });
+    if (res?.status >= 200 && res?.status < 300) {
+      setGroups((prev) => prev.filter((x) => (x.id ?? x.Id) !== id));
+      return true;
+    }
+    return false;
+  },
+  onError: (err) =>
+    window.alert(
+      err?.message ||
+        (isGroupAdmin
+          ? (t?.("groups.delete_error") || "Could not delete the group.")
+          : (t?.("groups.leave_error") || "Could not leave the group."))
+    ),
+}}
           />
         </div>
       </div>

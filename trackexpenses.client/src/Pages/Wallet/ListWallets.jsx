@@ -143,10 +143,11 @@ export default function ListWallets() {
 
   return (
     <div className="space-y-6 min-h-screen">
+      {/* Header: título + ação (tooltip absoluto para não empurrar o layout) */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title text={t?.("wallets.list") || "Carteiras"} />
 
-        <div className="relative group inline-flex flex-col items-end">
+        <div className="relative group inline-flex self-center">
           <Button
             variant="primary"
             size="md"
@@ -154,6 +155,7 @@ export default function ListWallets() {
             onClick={() => canCreate && navigate("/CreateWallet")}
             disabled={!canCreate}
             className="shrink-0"
+            aria-describedby="tip-wallet-limit"
           >
             <span className="inline-flex items-center gap-2">
               <Plus className="h-4 w-4" />
@@ -163,11 +165,19 @@ export default function ListWallets() {
 
           {!canCreate && (
             <span
+              id="tip-wallet-limit"
               className="
-                mt-2 text-xs text-gray-600 dark:text-gray-300
+                pointer-events-none absolute right-0 
+                top-[calc(100%+0.25rem)]
+                text-xs px-2 py-1 rounded-md shadow-lg
                 opacity-0 group-hover:opacity-100 transition-opacity duration-200
-                select-none
               "
+              style={{
+                backgroundColor: theme?.colors?.background?.paper,
+                color: theme?.colors?.text?.secondary,
+                border: `1px solid ${theme?.colors?.secondary?.light}`,
+                whiteSpace: "nowrap",
+              }}
               role="status"
             >
               {t?.("wallets.limitReachedTip") ||

@@ -69,6 +69,34 @@ namespace TRACKEXPENSES.Server.Controllers
             return await _userManager.IsInRoleAsync(me, "GROUPADMINISTRATOR");
         }
 
+        private async Task EnsureRoleExistsAsync(string roleName)
+        {
+            if (!await _roleManager.RoleExistsAsync(roleName))
+                await _roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+
+        private async Task AddRoleIfMissingAsync(User user, string roleName)
+        {
+            await EnsureRoleExistsAsync(roleName);
+            if (!await _userManager.IsInRoleAsync(user, roleName))
+                await _userManager.AddToRoleAsync(user, roleName);
+        }
+
+        private async Task RemoveRoleIfAsync(User user, string roleName, bool condition, CancellationToken ct)
+        {
+            if (!condition && await _userManager.IsInRoleAsync(user, roleName))
+                await _userManager.RemoveFromRoleAsync(user, roleName);
+        }
+
+        private Task<bool> BelongsToAnyOtherGroupAsync(string userId, string exceptGroupId, CancellationToken ct) =>
+            _context.Groups.AsNoTracking()
+                .AnyAsync(g => g.Id != exceptGroupId &&
+                               (g.AdminId == userId || g.Users.Any(u => u.Id == userId)), ct);
+
+        private Task<bool> BelongsToAnyGroupAsync(string userId, CancellationToken ct) =>
+            _context.Groups.AsNoTracking()
+                .AnyAsync(g => g.AdminId == userId || g.Users.Any(u => u.Id == userId), ct);
+
         // Se groupId vier vazio, escolhe um grupo do utilizador (admin tem prioridade).
         private async Task<string?> ResolveGroupIdAsync(string? groupId, CancellationToken ct)
         {
@@ -139,18 +167,28 @@ namespace TRACKEXPENSES.Server.Controllers
 
             _context.Groups.Add(group);
 
-            const string roleName = "GROUPADMINISTRATOR";
-            var hasRole = await _userManager.IsInRoleAsync(admin, roleName);
-            if (!hasRole)
+            // === Roles ===
+            const string ROLE_ADMIN = "GROUPADMINISTRATOR";
+            const string ROLE_MEMBER = "GROUPMEMBER";
+
+            await EnsureRoleExistsAsync(ROLE_ADMIN);
+            await EnsureRoleExistsAsync(ROLE_MEMBER);
+
+            // criador recebe GROUPADMINISTRATOR
+            if (!await _userManager.IsInRoleAsync(admin, ROLE_ADMIN))
             {
-                var addToRole = await _userManager.AddToRoleAsync(admin, roleName);
+                var addToRole = await _userManager.AddToRoleAsync(admin, ROLE_ADMIN);
                 if (!addToRole.Succeeded)
                 {
                     var errors = string.Join("; ", addToRole.Errors.Select(e => $"{e.Code}:{e.Description}"));
                     return StatusCode(StatusCodes.Status500InternalServerError,
-                        new { message = $"Failed to add admin to role '{roleName}'", errors });
+                        new { message = $"Failed to add admin to role '{ROLE_ADMIN}'", errors });
                 }
             }
+
+            // todos os utilizadores do grupo (inclui admin) recebem GROUPMEMBER
+            foreach (var u in group.Users)
+                await AddRoleIfMissingAsync(u, ROLE_MEMBER);
 
             await _context.SaveChangesAsync(ct);
 
@@ -272,13 +310,32 @@ namespace TRACKEXPENSES.Server.Controllers
 
                 _context.Groups.Remove(group);
                 await _context.SaveChangesAsync(ct);
+
+                // (opcional) remover GROUPMEMBER do admin se não pertencer a mais nenhum grupo
+                var me = await _userManager.FindByIdAsync(meId);
+                if (me != null)
+                {
+                    var stillInGroups = await BelongsToAnyGroupAsync(me.Id, ct);
+                    await RemoveRoleIfAsync(me, "GROUPMEMBER", stillInGroups, ct);
+                }
+
                 return Ok(new { deleted = true });
             }
 
-            var me = group.Users.FirstOrDefault(u => u.Id == meId);
-            if (me != null) group.Users.Remove(me);
+            // remover membro
+            var meUser = group.Users.FirstOrDefault(u => u.Id == meId);
+            if (meUser != null) group.Users.Remove(meUser);
 
             await _context.SaveChangesAsync(ct);
+
+            // se já não pertence a mais nenhum grupo -> remove GROUPMEMBER
+            var meAgain = await _userManager.FindByIdAsync(meId);
+            if (meAgain != null)
+            {
+                var stillInGroups = await BelongsToAnyGroupAsync(meAgain.Id, ct);
+                await RemoveRoleIfAsync(meAgain, "GROUPMEMBER", stillInGroups, ct);
+            }
+
             return Ok(new { left = true });
         }
 
@@ -318,10 +375,13 @@ namespace TRACKEXPENSES.Server.Controllers
             var toAddIds = incoming.Except(existingIds).ToList();
             var toRemoveIds = existingIds.Except(incoming).Where(uid => uid != g.AdminId).ToList();
 
+            // aplicar alterações na navegação
             if (toAddIds.Count > 0)
             {
                 var addUsers = await _userManager.Users.Where(u => toAddIds.Contains(u.Id)).ToListAsync(ct);
                 foreach (var u in addUsers) g.Users.Add(u);
+                // roles: cada novo membro recebe GROUPMEMBER
+                foreach (var u in addUsers) await AddRoleIfMissingAsync(u, "GROUPMEMBER");
             }
             if (toRemoveIds.Count > 0)
             {
@@ -330,6 +390,17 @@ namespace TRACKEXPENSES.Server.Controllers
             }
 
             await _context.SaveChangesAsync(ct);
+
+            // para cada removido, se não estiver em nenhum outro grupo -> remove GROUPMEMBER
+            if (toRemoveIds.Count > 0)
+            {
+                var removedUsers = await _userManager.Users.Where(u => toRemoveIds.Contains(u.Id)).ToListAsync(ct);
+                foreach (var u in removedUsers)
+                {
+                    var stillInAnother = await BelongsToAnyOtherGroupAsync(u.Id, g.Id, ct);
+                    await RemoveRoleIfAsync(u, "GROUPMEMBER", stillInAnother, ct);
+                }
+            }
 
             var admin = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == g.AdminId, ct);
             var users = await _context.Users.AsNoTracking()
@@ -384,8 +455,23 @@ namespace TRACKEXPENSES.Server.Controllers
             if (!await IsCurrentUserGroupAdmin(g, ct))
                 return Forbid();
 
+            // guardar ids dos utilizadores para limpeza de role depois
+            var memberIds = g.Users.Select(u => u.Id).Distinct().ToList();
+
             _context.Groups.Remove(g);
             await _context.SaveChangesAsync(ct);
+
+            // para cada utilizador, se já não estiver em nenhum grupo -> remover GROUPMEMBER
+            if (memberIds.Count > 0)
+            {
+                var users = await _userManager.Users.Where(u => memberIds.Contains(u.Id)).ToListAsync(ct);
+                foreach (var u in users)
+                {
+                    var stillInGroups = await BelongsToAnyGroupAsync(u.Id, ct);
+                    await RemoveRoleIfAsync(u, "GROUPMEMBER", stillInGroups, ct);
+                }
+            }
+
             return NoContent();
         }
 
@@ -507,9 +593,9 @@ namespace TRACKEXPENSES.Server.Controllers
         [Authorize]
         [HttpGet("UserWallets")]
         public async Task<IActionResult> GetUserWallets(
-    [FromQuery] string userId,
-    [FromQuery] bool includeArchived = false,
-    CancellationToken ct = default)
+            [FromQuery] string userId,
+            [FromQuery] bool includeArchived = false,
+            CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(userId))
                 return BadRequest(new { message = "userId is required." });

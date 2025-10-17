@@ -1,6 +1,11 @@
-// src/pages/Expenses/ListExpenses.jsx
+// =============================
+// Expenses/ListExpenses.jsx
+// Layout e padrões alinhados com ListWallets
+// =============================
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
+
 import Title from "../../components/Titles/TitlePage";
 import Button from "../../components/Buttons/Button";
 import GenericFilter from "../../components/Tables/GenericFilter";
@@ -19,11 +24,19 @@ const ROUTE_EDIT = (id) => `/Expenses/Edit/${id}`;
 const unwrap = (v) => (Array.isArray(v) ? v : v?.$values ?? []);
 const N = (v) => (v ?? "").toString().trim();
 
-function Chip({ children }) {
+function Badge({ children, tone = "info" }) {
+  const map =
+    {
+      ok: { bg: "rgba(16,185,129,0.15)", fg: "#10B981" },
+      err: { bg: "rgba(239,68,68,0.15)", fg: "#EF4444" },
+      info: { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" },
+      warn: { bg: "rgba(245,158,11,0.15)", fg: "#F59E0B" },
+    }[tone] || { bg: "rgba(59,130,246,0.15)", fg: "#3B82F6" };
+
   return (
     <span
       className="inline-block px-2 py-1 rounded-full text-xs"
-      style={{ background: "rgba(148,163,184,0.18)", color: "#94A3B8", whiteSpace: "nowrap" }}
+      style={{ background: map.bg, color: map.fg, whiteSpace: "nowrap" }}
     >
       {children}
     </span>
@@ -40,7 +53,12 @@ export default function ListExpenses() {
   const [loading, setLoading] = useState(true);
   const [errorSubmit, setErrorSubmit] = useState(null);
   const [wallets, setWallets] = useState([]);
-  const [flt, setFlt] = useState({ q: "", category: "all", wallet: "all", paid: "all" });
+  const [flt, setFlt] = useState({
+    q: "",
+    category: "all",
+    wallet: "all",
+    paid: "all",
+  });
 
   const walletMap = useMemo(() => {
     const map = {};
@@ -53,7 +71,10 @@ export default function ListExpenses() {
   const walletOptions = useMemo(
     () => [
       { value: "all", label: t?.("wallets.all") || "All wallets" },
-      ...wallets.map((w) => ({ value: w.Id ?? w.id, label: N(w.Name ?? w.name) })),
+      ...wallets.map((w) => ({
+        value: w.Id ?? w.id,
+        label: N(w.Name ?? w.name),
+      })),
     ],
     [wallets, t]
   );
@@ -113,7 +134,9 @@ export default function ListExpenses() {
 
   /* ---------------------------- category opts --------------------------- */
   const categoryOptions = useMemo(() => {
-    const names = new Set((items || []).map((x) => N(x?.Category)).filter(Boolean));
+    const names = new Set(
+      (items || []).map((x) => N(x?.Category)).filter(Boolean)
+    );
     return [
       { value: "all", label: t?.("common.allCategories") || "All categories" },
       ...[...names]
@@ -135,9 +158,11 @@ export default function ListExpenses() {
         const name = N(e?.Name).toLowerCase();
         const desc = N(e?.Description).toLowerCase();
         const cat = N(e?.Category).toLowerCase();
-        const matchesText = !q || name.includes(q) || desc.includes(q) || cat.includes(q);
+        const matchesText =
+          !q || name.includes(q) || desc.includes(q) || cat.includes(q);
         const matchesCat = c === "all" || cat === c;
-        const matchesWallet = w === "all" || (e?.WalletId && String(e.WalletId) === String(w));
+        const matchesWallet =
+          w === "all" || (e?.WalletId && String(e.WalletId) === String(w));
 
         const paidCount = e._instances.filter((i) => i.IsPaid).length;
         const totalCount = e._instances.length || 0;
@@ -170,13 +195,14 @@ export default function ListExpenses() {
       headerKey: "wallet",
       accessor: (w) => {
         const nm = walletMap[w?.WalletId] || "-";
-        return nm !== "-" ? <Chip>{nm}</Chip> : "-";
+        return nm !== "-" ? <Badge tone="info">{nm}</Badge> : "-";
       },
     },
     {
       key: "category",
       headerKey: "category",
-      accessor: (w) => N(w?.Category) ? <Chip>{N(w?.Category)}</Chip> : "-",
+      accessor: (w) =>
+        N(w?.Category) ? <Badge tone="warn">{N(w?.Category)}</Badge> : "-",
     },
     {
       key: "value",
@@ -197,7 +223,8 @@ export default function ListExpenses() {
         const inst = unwrap(w?.Instances);
         const paid = inst.filter((i) => i.IsPaid).length;
         const tot = inst.length || 0;
-        return tot ? `${paid}/${tot}` : "0/0";
+        const full = tot ? paid === tot : false;
+        return <Badge tone={full ? "ok" : "err"}>{tot ? `${paid}/${tot}` : "0/0"}</Badge>;
       },
     },
     {
@@ -217,11 +244,21 @@ export default function ListExpenses() {
   /* ------------------------------- render ------------------------------- */
   return (
     <div className="space-y-6 min-h-screen">
-      {/* header */}
+      {/* Header: título + ação */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Title text={t?.("expenses.list") || "Expenses"} />
-        <Button onClick={() => navigate("/CreateExpense")}>
-          {t?.("expenses.new") || "New expense"}
+
+        <Button
+          variant="primary"
+          size="md"
+          fullWidth={false}
+          onClick={() => navigate("/CreateExpense")}
+          className="shrink-0"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            {t?.("expenses.new") || "New expense"}
+          </span>
         </Button>
       </div>
 
@@ -250,7 +287,7 @@ export default function ListExpenses() {
         />
       </div>
 
-      {/* filters */}
+      {/* Filtros */}
       <GenericFilter
         className="mt-2"
         value={flt}
@@ -283,57 +320,58 @@ export default function ListExpenses() {
             label: t?.("expenses.paymentStatus") || "Payment status",
             options: [
               { value: "all", label: t?.("common.all") || "All" },
-              { value: "paid", label: t?.("expenses.filter.fullyPaid") || "Fully paid" },
-              { value: "unpaid", label: t?.("expenses.filter.notPaid") || "Not fully paid" },
+              {
+                value: "paid",
+                label:
+                  t?.("expenses.filter.fullyPaid") || "Fully paid",
+              },
+              {
+                value: "unpaid",
+                label:
+                  t?.("expenses.filter.notPaid") || "Not fully paid",
+              },
             ],
           },
         ]}
       />
 
-      {/* table */}
-      <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        <div className="relative overflow-x-auto">
-          <GenericTable
-            filteredData={filtered}
-            columns={columns}
-            theme={theme}
-            t={t}
-            loading={loading}
-            rowKey={(e) => e?.Id}
-            stickyHeader
-            truncateKeys={["name", "category", "wallet"]}
-            minTableWidth="76rem"
-            headClassName="bg-gray-50"
-            emptyMessage={t?.("common.noResults") || "No results"}
-            edit={{
-              enabled: true,
-              onEdit: (e) => navigate(ROUTE_EDIT(e?.Id)),
-            }}
-            remove={{
-              enabled: true,
-              confirmMessage:
-                t?.("common.confirmDelete") ||
-                "Are you sure you want to delete this expense?",
-              doDelete: async (w) => {
-                const res = await apiCall.post(
-                  EP_DELETE,
-                  { Id: w?.Id },
-                  { validateStatus: () => true }
-                );
-                if (res?.status >= 200 && res?.status < 300) {
-                  setItems((prev) => prev.filter((x) => x.Id !== w.Id));
-                  return true;
-                }
-                return false;
-              },
-              onError: (err) =>
-                setErrorSubmit(
-                  err?.message || "Error deleting expense."
-                ),
-            }}
-          />
-        </div>
-      </div>
+      {/* Tabela */}
+      <GenericTable
+        filteredData={filtered}
+        columns={columns}
+        theme={theme}
+        t={t}
+        loading={loading}
+        rowKey={(e) => e?.Id}
+        stickyHeader
+        truncateKeys={["name", "category", "wallet"]}
+        minTableWidth="76rem"
+        emptyMessage={t?.("common.noResults") || "No results"}
+        edit={{
+          enabled: true,
+          onEdit: (e) => navigate(ROUTE_EDIT(e?.Id)),
+        }}
+        remove={{
+          enabled: true,
+          confirmMessage:
+            t?.("common.confirmDelete") ||
+            "Are you sure you want to delete this expense?",
+          doDelete: async (w) => {
+            const res = await apiCall.post(
+              EP_DELETE,
+              { Id: w?.Id },
+              { validateStatus: () => true }
+            );
+            if (res?.status >= 200 && res?.status < 300) {
+              setItems((prev) => prev.filter((x) => x.Id !== w.Id));
+              return true;
+            }
+            return false;
+          },
+          onError: (err) =>
+            setErrorSubmit(err?.message || "Error deleting expense."),
+        }}
+      />
 
       {errorSubmit && (
         <div className="text-sm text-red-600" role="alert">
