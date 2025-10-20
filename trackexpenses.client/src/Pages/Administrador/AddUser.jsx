@@ -1,4 +1,3 @@
-// src/Pages/Administrador/AddUser.jsx
 import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Title from "../../components/Titles/TitlePage";
@@ -7,13 +6,42 @@ import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import { useTheme } from "../../styles/Theme/Theme";
 
 import Input from "../../components/Form/Input";
-// usa as mesmas regras do SignIn
 import { getPasswordValidation } from "../../utilis/Configurations/SigninConfiguration";
+
+function parseToRGB(c) {
+  if (!c || typeof c !== "string") return { r: 11, g: 18, b: 32 };
+  if (c.startsWith("#")) {
+    const h = c.slice(1);
+    const full = h.length === 3 ? h.split("").map(x => x + x).join("") : h;
+    return {
+      r: parseInt(full.slice(0, 2), 16),
+      g: parseInt(full.slice(2, 4), 16),
+      b: parseInt(full.slice(4, 6), 16),
+    };
+  }
+  if (c.startsWith("rgb")) {
+    const nums = c.replace(/[^\d.,]/g, "").split(",").map(Number);
+    return { r: nums[0] ?? 11, g: nums[1] ?? 18, b: nums[2] ?? 32 };
+  }
+  return { r: 11, g: 18, b: 32 };
+}
+function isDarkColor(color) {
+  const { r, g, b } = parseToRGB(color || "#0b1220");
+  const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luma < 128;
+}
 
 export default function AddUser() {
   const { t } = useLanguage();
   const { theme } = useTheme();
   const navigate = useNavigate();
+
+  const PAPER =
+    theme?.colors?.background?.paper ??
+    "rgba(255,255,255,0.92)";
+  const DARK = isDarkColor(PAPER);
+  const FG = DARK ? "#FFFFFF" : "#000000";
+  const BORDER_W = 2;
 
   const [saving, setSaving] = useState(false);
   const [errorSubmit, setErrorSubmit] = useState(null);
@@ -59,7 +87,6 @@ export default function AddUser() {
     }
 
     if (k === "Telephone") {
-      // só números
       v = String(v || "").replace(/\D/g, "");
     }
 
@@ -158,7 +185,7 @@ export default function AddUser() {
         FamilyName: form.FamilyName,
         Email: normalizeEmail(form.Email),
         Birthday: parseBirthdayToISO(form.Birthday),
-        CodeInvite: "", // 👈 como pediste
+        CodeInvite: "",
         PhoneNumber: form.Telephone,
         Password: form.Password,
         ConfirmPassword: form.ConfirmPassword,
@@ -179,6 +206,9 @@ export default function AddUser() {
     }
   };
 
+  const cancelBg = DARK ? "rgba(255,255,255,0.08)" : "#f3f4f6";
+  const cancelBorder = DARK ? "rgba(255,255,255,0.25)" : "#e5e7eb";
+
   return (
     <div className="max-w-[72rem] mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -188,7 +218,13 @@ export default function AddUser() {
       <form
         id="add-user-form"
         onSubmit={onSubmit}
-        className="bg-white rounded-3xl shadow-xl p-6 md:p-10"
+        className="rounded-3xl p-6 md:p-10"
+        style={{
+          backgroundColor: PAPER,
+          border: `${BORDER_W}px solid ${FG}`, 
+          color: FG,                       
+          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+        }}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input
@@ -232,10 +268,7 @@ export default function AddUser() {
             placeholder={tt("auth.fields.telephonePh")}
             value={form.Telephone}
             onChange={onChange("Telephone")}
-            onKeyDown={(e) => {
-              const blocked = ["e", "E", "+", "-", ".", ","];
-              if (blocked.includes(e.key)) e.preventDefault();
-            }}
+            onKeyDown={onPhoneKeyDown}
           />
 
           <Input
@@ -275,7 +308,12 @@ export default function AddUser() {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="px-5 h-10 rounded-2xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-60"
+            className="px-5 h-10 rounded-2xl hover:brightness-95 disabled:opacity-60"
+            style={{
+              background: cancelBg,
+              border: `1px solid ${cancelBorder}`,
+              color: FG,
+            }}
             disabled={saving}
           >
             {tt("common.cancel")}

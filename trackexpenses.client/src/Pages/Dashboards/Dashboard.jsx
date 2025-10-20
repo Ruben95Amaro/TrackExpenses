@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Wallet as WalletIcon } from "lucide-react";
 
 import Title from "../../components/Titles/TitlePage";
@@ -20,6 +20,29 @@ const N = (v) => (v == null ? 0 : Number(v));
 const fmtCurrency = (v, cur = "EUR") =>
   new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(N(v));
 
+function parseToRGB(c) {
+  if (!c) return { r: 11, g: 18, b: 32 };
+  if (c.startsWith("#")) {
+    const h = c.replace("#", "");
+    const full = h.length === 3 ? h.split("").map(x => x + x).join("") : h;
+    return {
+      r: parseInt(full.slice(0, 2), 16),
+      g: parseInt(full.slice(2, 4), 16),
+      b: parseInt(full.slice(4, 6), 16),
+    };
+  }
+  if (c.startsWith("rgb")) {
+    const nums = c.replace(/[^\d.,]/g, "").split(",").map(Number);
+    return { r: nums[0] ?? 11, g: nums[1] ?? 18, b: nums[2] ?? 32 };
+  }
+  return { r: 11, g: 18, b: 32 };
+}
+function isDarkColor(color) {
+  const { r, g, b } = parseToRGB(color || "#0b1220");
+  const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luma < 128;
+}
+
 export default function Dashboard() {
   useRequireWallet();
   const { theme } = useTheme();
@@ -34,7 +57,6 @@ export default function Dashboard() {
   });
 
   const [wallets, setWallets] = useState([]);
-
   const [loading, setLoading] = useState(false);
   const [summary, setSummary] = useState(null);
   const [series, setSeries] = useState([]);
@@ -43,16 +65,18 @@ export default function Dashboard() {
   const [currency, setCurrency] = useState("EUR");
   const [error, setError] = useState("");
 
-  const c = theme.colors;
+  const c  = theme?.colors || {};
+  const bg = c?.background?.paper;
+  const dark = isDarkColor(bg);
+  const FG = dark ? "#FFFFFF" : "#000000";                 
+  const BORDER_W = 2;
   const success = c?.success?.main || "#16a34a";
   const danger  = c?.error?.main   || "#ef4444";
-  const border  = c?.secondary?.light || "#334155";
-  const bg      = c?.background?.paper;
+  const gridColor = dark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.25)"; 
 
   const showIncome  = flt.type === "both" || flt.type === "income";
   const showExpense = flt.type === "both" || flt.type === "expense";
 
-  // Carrega carteiras e define wallet primária
   useEffect(() => {
     let cancel = false;
     (async () => {
@@ -81,9 +105,8 @@ export default function Dashboard() {
       from: flt.from,
       to: flt.to,
       granularity: flt.granularity,
+      walletId: flt.walletId || undefined,
     };
-    if (flt.walletId) params.walletId = flt.walletId;
-
     try {
       const [sumRes, tsRes, ciRes, ceRes] = await Promise.all([
         apiCall.get("Dashboard/Summary", { params }),
@@ -108,7 +131,6 @@ export default function Dashboard() {
     }
   };
 
-  // Pesquisa inicial automática
   const didInitialSearch = useRef(false);
   useEffect(() => {
     if (!didInitialSearch.current && flt.walletId) {
@@ -185,23 +207,37 @@ export default function Dashboard() {
 
       {/* Gráfico de evolução */}
       {summary && (
-        <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
+        <div
+          className="rounded-2xl p-4"
+          style={{
+            border: `${BORDER_W}px solid ${FG}`, 
+            background: bg,
+            color: FG,
+          }}
+        >
           <div className="mb-3 font-medium">{t("dashboard.charts.evolution")}</div>
           <EvolutionChart
             data={series}
             currency={currency}
-            colors={{ grid: border, text: theme.colors.text?.secondary, income: success, expense: danger }}
+            colors={{ grid: gridColor, textStrong: FG, income: success, expense: danger }}
             showIncome={showIncome}
             showExpense={showExpense}
             bg={bg}
-            border={border}
+            border={FG}   
           />
         </div>
       )}
 
       {/* Gráfico de categorias */}
       {summary && (
-        <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
+        <div
+          className="rounded-2xl p-4"
+          style={{
+            border: `${BORDER_W}px solid ${FG}`,
+            background: bg,
+            color: FG,
+          }}
+        >
           <div className="mb-3 font-medium">{t("dashboard.charts.categories")}</div>
           <CategoriesPies
             incomeData={catsIncome}
@@ -211,7 +247,7 @@ export default function Dashboard() {
               income: t("dashboard.charts.income"),
               expense: t("dashboard.charts.expenses"),
             }}
-            themeColors={{ bg, border, text: theme.colors.text?.primary }}
+            themeColors={{ bg, border: FG, text: FG }}
           />
         </div>
       )}

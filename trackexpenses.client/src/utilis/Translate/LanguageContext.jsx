@@ -112,8 +112,16 @@ const translations = {
       create: "Create",
     photo: "Photo",
     fixErrors: "Fix the errors above to continue",
-    edit: "Edit" 
-       
+    edit: "Edit",
+    today: "Today",
+    prev: "Previous",
+    next: "Next",
+    month: "Month",
+    year: "Year",
+    allStatus: "All",
+    pending: "Pending",
+    close: "Close",
+    
   },
   tooltip: {
     info: "Information"
@@ -134,7 +142,9 @@ const translations = {
       one: "Wallet",
       placeholderName : "Wallet name",
       limitReachedTip: "You need a Premium plan to create more wallets.",
-
+        deletePrimaryWarn: "⚠️ This is your PRIMARY wallet.\nThe system does not allow deleting the primary one.\nDo you still want to try?",
+    deleteError: "Error deleting wallet.",
+    loadError: "Error loading wallets."
     },
     settings: {
       appearance: "Appearance",
@@ -171,6 +181,7 @@ const translations = {
 }
 ,
     auth: {
+      login_required: "Sign in to view the calendar.",
       loginTitle: "LOGIN",
       forgotTitle: "Forgot your password?",
       forgotSubtitle:
@@ -207,7 +218,6 @@ const translations = {
       enter_name: "Enter a name for the group...",
       members: "Members",
       create: "Create Group",
-      errors_user_not_found: "Sorry, user not found!",
       errors_invalid_email: "Invalid Email!",
       errors_name_required: "Name is required",
       errors_lookup_bad_response: "User lookup returned an unexpected response.",
@@ -217,13 +227,19 @@ const translations = {
       list_title: "Groups list",
       create_title: "Create Group",
       errors_create_failed: "Could not create the group.",
-      errors_no_admin: "Admin group is not found.",
       admin: "Group Administrator",
       confirm_leave: "Are you sure you want to leave the group?",
       not_found: "Group not found.",
       saved: "Group saved",
       delete_failed: "Delete group faill",
-      confirm_delete: "Are you sure that you want to delete the group?"
+      confirm_delete: "Are you sure that you want to delete the group?",
+    create_subtitle: "Choose a name and add users by email",
+    edit_title: "Edit group",
+    save_failed: "Could not save group.",
+    load_failed: "Could not load group.",
+    readonly: "You are not the admin of this group or you don't have the GROUPADMINISTRATOR role. The form is read-only.",
+    errors_user_not_found: "User does not exist.",
+    errors_no_admin: "You must be logged in to create a group.",
     },
   profile: { 
       title: "Profile",
@@ -246,13 +262,18 @@ const translations = {
   enter_first_name: "Enter first name",
   enter_family_name: "Enter family name",
   email: "Email",
-  enter_phone_number: "Enter phone number",
   hide_password: "Hide password",
   show_password: "Show password",
-  image_invalid_format: "Invalid image format. Use JPG or PNG.",
-  image_too_large: "Image is too large (max 5 MB).",
-  image_upload_error: "We couldn't upload your image. Please try again.",
-  image_error_prefix: "Error:"
+  image_error_prefix: "Error:",
+    enter_phone_number: "Enter your phone number",
+    image_invalid_format: "Please select a valid image file (JPG, PNG or GIF).",
+    image_too_large: "Image must be less than 5 MB.",
+    image_upload_error: "Error uploading image.",
+    remove_photo: "Remove photo",
+    enter_birthday: "Select birthday",
+    person_information: "Personal information",
+    click_to_change_photo: "Click to change photo"
+
   },
     placeholders: {
       email: "Enter your email...",
@@ -293,15 +314,16 @@ const translations = {
       confirmPasswordRequired: "Confirm password is required.",
       passwordsDontMatch: "Passwords do not match.",
       registerFailed: "Error while registering user.",
-      couldnt_load_profile: "We couldn't load your profile. Please try again.",
-      couldnt_save_changes: "We couldn't save your changes. Please try again.",
       network: "Network error.",
     save: "Could not save.",
     load: "Failed to load.",
     upload: "Could not upload image.",
     notFound: "Not found",
     generic: "Error",
-    createEarning: "Could not create earning."
+    createEarning: "Could not create earning.",
+    couldnt_load_profile: "Could not load profile.",
+    couldnt_save_changes: "Could not save changes."
+
     },
     password: {
       length: "Length: ",
@@ -351,7 +373,6 @@ const translations = {
     list: "List Expenses",
     searchPlaceholder: "Search name, description or category...",
     deleteConfirm: "Are you sure you want to delete this expense? This action can’t be undone.",
-    
     method: {
       one: "One-off",
       installments: "Installments (credit)",
@@ -390,6 +411,8 @@ const translations = {
       paid: "Already paid",
       remain: "Remaining"
     },
+    title: "Expenses",
+    none: "No expenses this day."
   },
 
   qr: {
@@ -474,7 +497,9 @@ const translations = {
       receivedAmount: "Received amount"
     },
 
-    deleteConfirm: "Delete this earning (and all its instances)?"
+    deleteConfirm: "Delete this earning (and all its instances)?",
+    title: "Earnings",
+    none: "No earnings this day."
   },
    walletGate: {
     title: "A wallet is required",
@@ -501,7 +526,6 @@ receipt: {
     endless: "Endless"
   },
   calendar: {
-  title: "Expenses calendar",
   today: "Today",
   allWallets: "All wallets",
   wallet: "Wallet",
@@ -528,6 +552,32 @@ receipt: {
   instanceOf: "Instance of",
   endOf: "End of",
   loading: "Loading…",
+  title: "Financial Calendar",
+    month: "Month",
+    year: "Year",
+    months: {
+      january: "January",
+      february: "February",
+      march: "March",
+      april: "April",
+      may: "May",
+      june: "June",
+      july: "July",
+      august: "August",
+      september: "September",
+      october: "October",
+      november: "November",
+      december: "December"
+    },
+    weekdays: {
+      sun: "Sunday",
+      mon: "Monday",
+      tue: "Tuesday",
+      wed: "Wednesday",
+      thu: "Thursday",
+      fri: "Friday",
+      sat: "Saturday"
+    }
 },
 filters: {
     dateRange: "Date range",
@@ -550,8 +600,13 @@ filters: {
     ytd: "Year to date",
   },
 dashboard: {
-  title: "Dashboard",
   subtitle: "Overview of your finances",
+  title: "Personal Dashboard",
+    groupTitle: "Group Dashboard",
+    adminTitle: "Admin Dashboard",
+    overview: "Overview",
+    stats: "Statistics",
+    activity: "Recent Activity",
 
   filters: {
     wallet_primary: "Primary",
@@ -583,7 +638,14 @@ dashboard: {
     income: "Income",
     expenses: "Expenses",
     status: "Status",
-    wallets: "Wallet balances"
+    wallets: "Wallet balances",
+    categoriesPies: {
+      income: "Income",
+      expense: "Expenses",
+      centerIncome: "Total Income",
+      centerExpense: "Total Expenses",
+      noData: "No data",
+    },
   },
 
   legend: {

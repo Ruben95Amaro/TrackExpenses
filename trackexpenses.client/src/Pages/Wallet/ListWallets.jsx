@@ -61,7 +61,7 @@ export default function ListWallets() {
       const list = Array.isArray(data) ? data : data?.$values ?? [];
       setWallets(list);
     } catch (e) {
-      setErrorSubmit(e?.message || "Erro ao carregar carteiras.");
+      setErrorSubmit(e?.message || t("wallets.loadError"));
     } finally {
       setLoading(false);
     }
@@ -73,10 +73,10 @@ export default function ListWallets() {
 
   const statusOptions = useMemo(
     () => [
-      { value: "all", label: t?.("common.all") || "Todos" },
-      { value: "active", label: t?.("common.active") || "Ativas" },
-      { value: "archived", label: t?.("common.archived") || "Arquivadas" },
-      { value: "primary", label: t?.("common.primary") || "Primária" },
+      { value: "all", label: t("common.all") },
+      { value: "active", label: t("common.active") },
+      { value: "archived", label: t("common.archived") },
+      { value: "primary", label: t("common.primary") },
     ],
     [t]
   );
@@ -119,7 +119,7 @@ export default function ListWallets() {
         <div className="flex items-center gap-2">
           <span className="font-medium">{w?.name || "-"}</span>
           {w?.isPrimary && (
-            <Badge tone="info">{t?.("common.primary") || "Primary"}</Badge>
+            <Badge tone="info">{t("common.primary")}</Badge>
           )}
         </div>
       ),
@@ -134,18 +134,17 @@ export default function ListWallets() {
       headerKey: "status",
       accessor: (w) =>
         w?.isArchived ? (
-          <Badge tone="err">{t?.("common.archived") || "Archived"}</Badge>
+          <Badge tone="err">{t("common.archived")}</Badge>
         ) : (
-          <Badge tone="ok">{t?.("common.active") || "Active"}</Badge>
+          <Badge tone="ok">{t("common.active")}</Badge>
         ),
     },
   ];
 
   return (
     <div className="space-y-6 min-h-screen">
-      {/* Header: título + ação (tooltip absoluto para não empurrar o layout) */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <Title text={t?.("wallets.list") || "Carteiras"} />
+        <Title text={t("wallets.list")} />
 
         <div className="relative group inline-flex self-center">
           <Button
@@ -159,7 +158,7 @@ export default function ListWallets() {
           >
             <span className="inline-flex items-center gap-2">
               <Plus className="h-4 w-4" />
-              {t?.("wallets.new") || "Nova Wallet"}
+              {t("wallets.new")}
             </span>
           </Button>
 
@@ -180,8 +179,7 @@ export default function ListWallets() {
               }}
               role="status"
             >
-              {t?.("wallets.limitReachedTip") ||
-                "Precisas de Premium para criar mais carteiras."}
+              {t("wallets.limitReachedTip")}
             </span>
           )}
         </div>
@@ -197,14 +195,12 @@ export default function ListWallets() {
         showToggle
         defaultOpen
         showSearch
-        searchPlaceholder={
-          t?.("wallets.searchPlaceholder") || "Pesquisar carteiras..."
-        }
+        searchPlaceholder={t("wallets.searchPlaceholder")}
         filters={[
           {
             key: "status",
             type: "select",
-            label: t?.("wallets.status") || "Status",
+            label: t("wallets.status"),
             options: statusOptions,
             defaultValue: "all",
           },
@@ -216,12 +212,13 @@ export default function ListWallets() {
         columns={columns}
         theme={theme}
         t={t}
+        i18nPrefix="common"   
         loading={loading}
         rowKey={(w) => w?.id}
         stickyHeader
         truncateKeys={["name"]}
         minTableWidth="48rem"
-        emptyMessage={t?.("common.noResults") || "Sem resultados"}
+        emptyMessage={t("common.noResults")}
         edit={{
           enabled: true,
           navigate,
@@ -231,25 +228,20 @@ export default function ListWallets() {
           enabled: true,
           getConfirmMessage: (w) =>
             w?.isPrimary
-              ? (t?.("wallets.deletePrimaryWarn") ??
-                  "⚠️ Esta é a tua carteira PRIMÁRIA.\nO sistema não permite apagar a primária.\nQueres tentar mesmo assim?")
-              : (t?.("common.confirmDelete") ??
-                  "Tens a certeza que queres apagar esta carteira?"),
+              ? t("wallets.deletePrimaryWarn")
+              : t("common.confirmDelete"),
           doDelete: async (w) => {
             const res = await apiCall.delete(`/wallets/${w.id}`);
             if (res?.ok) {
               setWallets((prev) => prev.filter((x) => x.id !== w.id));
               return true;
             }
-            const msg =
-              res?.error?.message ||
-              t?.("wallets.deleteError") ||
-              "Erro ao apagar carteira.";
+            const msg = res?.error?.message || t("wallets.deleteError");
             window.alert(msg);
             throw new Error(msg);
           },
           onError: (err) =>
-            setErrorSubmit(err?.message || "Erro ao apagar carteira."),
+            setErrorSubmit(err?.message || t("wallets.deleteError")),
         }}
       />
 

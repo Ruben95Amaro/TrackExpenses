@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
+import { useLanguage } from "../../utilis/Translate/LanguageContext";
 
 const A = (x) => (Array.isArray(x) ? x : x?.$values ? x.$values : []);
 const N = (v) => (v == null ? 0 : Number(v));
@@ -10,27 +11,27 @@ export default function CategoriesPies({
   incomeData = [],
   expenseData = [],
   currency = "EUR",
-  titles = { income: "Income", expense: "Expenses" },
-  centerLabels = { income: "Total de Receitas", expense: "Total de Despesas" },
   themeColors = {},
-  t,
 }) {
+  const { t } = useLanguage(); 
+
   const { bg = "#0b1220", border = "#334155", text = "#e5e7eb" } = themeColors;
 
   const goodColors = ["#22c55e", "#0ea5e9", "#14b8a6", "#a855f7", "#4f46e5", "#7c3aed"];
   const badColors  = ["#ef4444", "#f97316", "#eab308", "#06b6d4", "#3b82f6", "#8b5cf6"];
 
-  const tTopIncome  = t ? t(titles.income)        : titles.income;
-  const tTopExpense = t ? t(titles.expense)       : titles.expense;
-  const tCIncome    = t ? t(centerLabels.income)  : centerLabels.income;
-  const tCExpense   = t ? t(centerLabels.expense) : centerLabels.expense;
+  const titleIncome   = t("charts.categoriesPies.income");
+  const titleExpense  = t("charts.categoriesPies.expense");
+  const centerIncome  = t("charts.categoriesPies.centerIncome");
+  const centerExpense = t("charts.categoriesPies.centerExpense");
+  const noDataLabel   = t("charts.categoriesPies.noData");
 
   const totIncome  = useMemo(() => A(incomeData).reduce((s, d) => s + N(d.amount), 0), [incomeData]);
   const totExpense = useMemo(() => A(expenseData).reduce((s, d) => s + N(d.amount), 0), [expenseData]);
 
   const Donut = ({ data, colors, centerTitle, total, isGood, title }) => {
     const isEmpty = total <= 0;
-    const dataset = isEmpty ? [{ category: "placeholder", amount: 1 }] : A(data);
+    const dataset = isEmpty ? [{ category: noDataLabel, amount: 1 }] : A(data);
 
     return (
       <div className="flex flex-col items-center w-full">
@@ -126,18 +127,18 @@ export default function CategoriesPies({
       <Donut
         data={expenseData}
         colors={badColors}
-        centerTitle={tCExpense}
+        centerTitle={centerExpense}
         total={totExpense}
         isGood={false}
-        title={tTopExpense}
+        title={titleExpense}
       />
       <Donut
         data={incomeData}
         colors={goodColors}
-        centerTitle={tCIncome}
+        centerTitle={centerIncome}
         total={totIncome}
         isGood={true}
-        title={tTopIncome}
+        title={titleIncome}
       />
     </div>
   );

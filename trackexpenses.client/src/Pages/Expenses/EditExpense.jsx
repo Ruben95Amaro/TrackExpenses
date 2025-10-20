@@ -8,6 +8,7 @@ import Button from "../../components/Buttons/Button";
 import Input from "../../components/Form/Input";
 import TextArea from "../../components/Form/TextArea";
 import StatCard from "../../components/UI/StatCard";
+import { useTheme } from "../../styles/Theme/Theme";
 
 /* API */
 import apiCall from "../../services/ApiCallGeneric/apiCall";
@@ -57,20 +58,21 @@ const EP_UPDATE_INSTANCE = "Expenses/UpdateExpenseInstance";
 const EP_UPLOAD_INSTANCE_IMAGE = (instanceId) => `Expenses/Instance/UploadImage/${instanceId}`;
 const EP_LIST_INSTANCES_WITH_PATH = (expenseId) => `Expenses/InstancesByExpense/${expenseId}`;
 
-/* ───────────────── visual constants (pretos) ───────────────── */
-const BORDER = "#000";                       
-const BORDER_WIDTH = "2px";
-const PAPER = "rgba(255,255,255,0.9)";      
-const HEADTX = "#000";                       
-const ROWSEP = "rgba(0,0,0,0.22)";          
-
-const thickCardStyle = {
-  border: `${BORDER_WIDTH} solid ${BORDER}`,
-};
-
 export default function EditExpense() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { theme, isDarkMode } = useTheme();
+  const c = theme?.colors || {};
+
+  /* ─────────── visuais com regra de contraste ─────────── */
+  const CONTRAST = isDarkMode ? "#FFFFFF" : "#000000";
+  const BORDER_WIDTH = "2px";
+  const PAPER = c.background?.paper ?? (isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.9)");
+  const ROWSEP = isDarkMode ? "rgba(255,255,255,0.35)" : "rgba(0,0,0,0.22)";
+  const thumbRing = isDarkMode ? "ring-white/20 bg-white/5" : "ring-black/20 bg-black/5";
+  const rowHover = isDarkMode ? "hover:bg-white/5" : "hover:bg-black/5";
+
+  const thickCardStyle = { border: `${BORDER_WIDTH} solid ${CONTRAST}` };
 
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
@@ -234,14 +236,13 @@ export default function EditExpense() {
       const r = await apiCall.post(EP_UPDATE_INSTANCE, payload, { validateStatus: () => true });
       if (!ok2xx(r)) throw new Error("Could not update installment.");
 
-      // upload new image if chosen
       if (instFile) {
         const errMsg = validateImageFile(instFile);
         if (errMsg) return alert(errMsg);
 
         setInstUploading(true);
         const fd = new FormData();
-        fd.append("image", instFile); // controller expects "image"
+        fd.append("image", instFile);
         const up = await apiCall.post(EP_UPLOAD_INSTANCE_IMAGE(instEditing.Id), fd, {
           validateStatus: () => true,
         });
@@ -296,7 +297,7 @@ export default function EditExpense() {
     try {
       setExpenseUploading(true);
       const fd = new FormData();
-      fd.append("Image", expenseFile); 
+      fd.append("Image", expenseFile);
       const r = await apiCall.post(EP_UPLOAD_EXPENSE_IMAGE(expense.Id), fd, { validateStatus: () => true });
       setExpenseUploading(false);
 
@@ -373,12 +374,12 @@ export default function EditExpense() {
     }
   };
 
-  if (loading) return <div className="p-6" style={{ color: "#000" }}>Loading…</div>;
-  if (err) return <div className="p-6" style={{ color: "#000" }}>{err}</div>;
-  if (!expense) return <div className="p-6" style={{ color: "#000" }}>Not found.</div>;
+  if (loading) return <div className="p-6" style={{ color: CONTRAST }}>Loading…</div>;
+  if (err) return <div className="p-6" style={{ color: CONTRAST }}>{err}</div>;
+  if (!expense) return <div className="p-6" style={{ color: CONTRAST }}>Not found.</div>;
 
   return (
-    <div className="space-y-6" style={{ color: "#000" }}>
+    <div className="space-y-6" style={{ color: CONTRAST }}>
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <Title text="Edit Expense" />
@@ -436,7 +437,7 @@ export default function EditExpense() {
         <div className="flex items-start gap-4">
           <button
             type="button"
-            className="w-28 h-28 rounded-lg overflow-hidden ring-2 ring-black/20 bg-black/5 flex items-center justify-center shrink-0"
+            className={`w-28 h-28 rounded-lg overflow-hidden ring-2 ${thumbRing} flex items-center justify-center shrink-0`}
             onClick={() => expensePreview && setLightboxUrl(expensePreview)}
             title={expensePreview ? "Click to enlarge" : ""}
           >
@@ -449,7 +450,9 @@ export default function EditExpense() {
 
           <div className="flex-1">
             <div className="flex items-center justify-between">
-              <label className="block mb-1 text-sm font-medium">Receipt / expense photo</label>
+              <label className="block mb-1 text-sm font-medium" style={{ color: CONTRAST }}>
+                Receipt / expense photo
+              </label>
               <span
                 className={`ml-2 text-[11px] px-2 py-0.5 rounded ${
                   expensePreview ? "bg-green-600/15 text-green-700" : "bg-red-600/15 text-red-700"
@@ -491,7 +494,7 @@ export default function EditExpense() {
               minWidth: "56rem",
               borderCollapse: "separate",
               borderSpacing: 0,
-              color: "#000",                
+              color: CONTRAST,
               background: "transparent",
             }}
           >
@@ -499,7 +502,7 @@ export default function EditExpense() {
               className="sticky top-0 z-10"
               style={{
                 background: "inherit",
-                color: HEADTX,              
+                color: CONTRAST,
                 backgroundClip: "padding-box",
               }}
             >
@@ -508,7 +511,7 @@ export default function EditExpense() {
                   <th
                     key={h}
                     className="py-2 px-4 uppercase text-xs font-semibold tracking-wider text-center"
-                    style={{ borderBottom: `1px solid ${BORDER}` }}   
+                    style={{ borderBottom: `1px solid ${CONTRAST}` }}
                   >
                     {h}
                   </th>
@@ -530,9 +533,9 @@ export default function EditExpense() {
                 return (
                   <tr
                     key={inst.Id}
-                    className="transition-colors hover:bg-black/5"  
+                    className={`transition-colors ${rowHover}`}
                     style={{
-                      borderBottom: isLast ? `${BORDER_WIDTH} solid ${BORDER}` : `1px solid ${ROWSEP}`,
+                      borderBottom: isLast ? `${BORDER_WIDTH} solid ${CONTRAST}` : `1px solid ${ROWSEP}`,
                     }}
                   >
                     <td className="py-2 px-4 text-center">
@@ -582,7 +585,7 @@ export default function EditExpense() {
 
               {!instances.length && (
                 <tr>
-                  <td className="py-6 px-4 opacity-60 text-center" colSpan={6} style={{ borderBottom: `${BORDER_WIDTH} solid ${BORDER}` }}>
+                  <td className="py-6 px-4 opacity-60 text-center" colSpan={6} style={{ borderBottom: `${BORDER_WIDTH} solid ${CONTRAST}` }}>
                     No instances.
                   </td>
                 </tr>
@@ -603,9 +606,14 @@ export default function EditExpense() {
       {instModalOpen && instEditing && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setInstModalOpen(false)}>
           <div
-            className="bg-white rounded-xl w-full max-w-lg p-4"
+            className="rounded-xl w-full max-w-lg p-4"
             onClick={(e) => e.stopPropagation()}
-            style={{ boxShadow: "0 20px 60px rgba(0,0,0,0.35)", color: "#000" }}
+            style={{
+              backgroundColor: PAPER,                  
+              color: CONTRAST,                         
+              boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+              border: `${BORDER_WIDTH} solid ${CONTRAST}`, 
+            }}
           >
             <h3 className="text-lg font-semibold mb-3">Edit installment</h3>
 
@@ -616,7 +624,7 @@ export default function EditExpense() {
               <div className="flex items-start gap-3">
                 <button
                   type="button"
-                  className="w-20 h-20 rounded-lg overflow-hidden ring-2 ring-black/20 bg-black/5 flex items-center justify-center shrink-0"
+                  className={`w-20 h-20 rounded-lg overflow-hidden ring-2 ${thumbRing} flex items-center justify-center shrink-0`}
                   onClick={() => instPreviewUrl && setLightboxUrl(instPreviewUrl)}
                   title={instPreviewUrl ? "Click to enlarge" : ""}
                 >
@@ -629,7 +637,9 @@ export default function EditExpense() {
 
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm mb-1">Receipt photo (optional)</label>
+                    <label className="block text-sm mb-1" style={{ color: CONTRAST }}>
+                      Receipt photo (optional)
+                    </label>
                     <span
                       className={`ml-2 text-[11px] px-2 py-0.5 rounded ${instPreviewUrl ? "bg-green-600/15 text-green-700" : "bg-red-600/15 text-red-700"}`}
                     >

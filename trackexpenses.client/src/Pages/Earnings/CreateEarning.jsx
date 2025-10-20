@@ -9,6 +9,7 @@ import Button from "../../components/Buttons/Button";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useTheme } from "../../styles/Theme/Theme";
 
 const EP_CREATE     = "Earnings/CreateEarningsWithImage";
 const EP_WALLETS    = "/wallets?includeArchived=true";
@@ -43,8 +44,10 @@ const PERIODICITY_TO_UNIT = {
 export default function CreateEarning() {
   const { auth } = useContext(AuthContext) || {};
   const { t } = useLanguage ? useLanguage() : { t: () => undefined };
+  const { theme, isDarkMode } = useTheme();
+  const CONTRAST = isDarkMode ? "#FFFFFF" : "#000000";
+  const PAPER = theme?.colors?.background?.paper ?? (isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.9)");
 
-  // método visual: one | installments | recurring
   const [kind, setKind] = useState("one");
 
   const [form, setForm] = useState({
@@ -163,7 +166,7 @@ export default function CreateEarning() {
       fd.append("RepeatEvery", "1");
       fd.append("RepeatUnit", "MONTH");
       fd.append("Occurrences", String(installmentsCount));
-      // SplitMode default: SPLIT_TOTAL 
+      // SplitMode default: SPLIT_TOTAL
     } else if (kind === "recurring") {
       const reps = form.RepeatCount ? Number(form.RepeatCount) : 12;
       fd.append("Method", "RECURRING");
@@ -204,7 +207,7 @@ export default function CreateEarning() {
   const hasSelectedCustom = form.Category && !knownValuesLower.has(form.Category.toLowerCase());
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ color: CONTRAST }}>
       <Title text={t?.("earnings.new") || "New earning"} />
 
       {/* KPIs  */}
@@ -215,7 +218,7 @@ export default function CreateEarning() {
       </div>
 
       {/* Seleção do método */}
-      <Card>
+      <Card style={{ background: PAPER, boxShadow: `inset 0 0 0 2px ${CONTRAST}` }}>
         <div className="flex flex-wrap items-center justify-evenly py-4">
           <Button type="button" variant={kind === "one" ? "primary" : "secondary"} onClick={() => setKind("one")} className="h-12 w-60 text-base rounded-lg">
             {t?.("earnings.method.oneoff") || "One-off"}
@@ -237,7 +240,7 @@ export default function CreateEarning() {
               value={form.InstallmentsCount}
               onChange={(e) => set("InstallmentsCount", e.target.value)}
             />
-            <div className="self-end text-sm opacity-75 md:col-span-2">
+            <div className="self-end text-sm opacity-75 md:col-span-2" style={{ color: CONTRAST }}>
               {(t?.("earnings.installments.each") || "Each installment ≈")} {isFinite(perInstallment) ? perInstallment.toFixed(2) : "—"} {CURRENCY}
             </div>
           </div>
@@ -266,13 +269,18 @@ export default function CreateEarning() {
       </Card>
 
       {/* Foto / Recibo  */}
-      <Card>
+      <Card style={{ background: PAPER, boxShadow: `inset 0 0 0 2px ${CONTRAST}` }}>
         <div className="flex items-start gap-4">
           <button
             type="button"
-            className="w-28 h-28 rounded-md overflow-hidden ring-1 ring-white/10 bg-white/5 flex items-center justify-center shrink-0"
+            className="w-28 h-28 rounded-md overflow-hidden flex items-center justify-center shrink-0"
             onClick={() => photoPreviewUrl && setLightboxOpen(true)}
             title={photoPreviewUrl ? (t?.("receipt.clickToEnlarge") || "Click to enlarge") : ""}
+            style={{
+              color: CONTRAST,
+              background: "transparent",
+              boxShadow: `inset 0 0 0 1px ${CONTRAST}`,
+            }}
           >
             {photoPreviewUrl ? (
               <img src={photoPreviewUrl} alt={t?.("receipt.previewAlt") || "Preview"} className="w-full h-full object-cover" />
@@ -281,7 +289,7 @@ export default function CreateEarning() {
             )}
           </button>
           <div className="flex-1">
-            <label className="block mb-1 text-sm font-medium">
+            <label className="block mb-1 text-sm font-medium" style={{ color: CONTRAST }}>
               {t?.("earnings.photo._") || "Earning photo (optional)"}
             </label>
             <input ref={photoInputRef} type="file" accept="image/*" onChange={(e) => handlePhotoPick(e.target.files?.[0] || null)} className="hidden" />
@@ -304,7 +312,7 @@ export default function CreateEarning() {
 
       {/* Form principal  */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Card>
+        <Card style={{ background: PAPER, boxShadow: `inset 0 0 0 2px ${CONTRAST}` }}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label={t?.("earnings.form.title") || "Title"} value={form.Title} onChange={(e) => set("Title", e.target.value)} required />
             <Select label={t?.("earnings.form.wallet") || "Wallet"} value={form.WalletId} onChange={(e) => set("WalletId", e.target.value)} required>
@@ -331,7 +339,7 @@ export default function CreateEarning() {
         {err && <div className="text-sm text-red-600">{err}</div>}
       </form>
 
-      <div className="mt-6 pt-4 flex items-center justify-between">
+      <div className="mt-6 pt-4 flex items-center justify-between" style={{ borderTop: `1px solid ${CONTRAST}` }}>
         <Button type="button" variant="secondary" onClick={() => window.history.back()} disabled={submitting} className="h-11 rounded-md px-4">
           {t?.("common.cancel") || "Cancel"}
         </Button>

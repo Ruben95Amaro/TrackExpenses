@@ -8,9 +8,42 @@ import { useTheme } from "../../styles/Theme/Theme";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
+import { Save } from "lucide-react";
 
+/* ===== Utils  ===== */
 const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s || "").trim());
 const norm = (s) => String(s || "").trim().toLowerCase();
+const unwrap = (v) => (Array.isArray(v) ? v : v?.$values ?? v ?? []);
+
+const alpha = (hexOrRgb, a = 0.2) => {
+  if (!hexOrRgb) return `rgba(0,0,0,${a})`;
+  if (hexOrRgb.startsWith("#")) {
+    const h = hexOrRgb.slice(1);
+    const f = h.length === 3 ? h.split("").map(x => x + x).join("") : h;
+    const r = parseInt(f.slice(0,2),16), g = parseInt(f.slice(2,4),16), b = parseInt(f.slice(4,6),16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+  const nums = hexOrRgb.replace(/[^\d.,]/g, "").split(",").map(Number);
+  return `rgba(${nums[0]||0},${nums[1]||0},${nums[2]||0},${a})`;
+};
+const parseToRGB = (c) => {
+  if (!c || typeof c !== "string") return { r: 11, g: 18, b: 32 };
+  if (c.startsWith("#")) {
+    const h = c.slice(1);
+    const f = h.length === 3 ? h.split("").map((x) => x + x).join("") : h;
+    return { r: parseInt(f.slice(0,2),16), g: parseInt(f.slice(2,4),16), b: parseInt(f.slice(4,6),16) };
+  }
+  if (c.startsWith("rgb")) {
+    const n = c.replace(/[^\d.,]/g, "").split(",").map(Number);
+    return { r: n[0] ?? 11, g: n[1] ?? 18, b: n[2] ?? 32 };
+  }
+  return { r: 11, g: 18, b: 32 };
+};
+const isDarkColor = (color) => {
+  const { r, g, b } = parseToRGB(color || "#0b1220");
+  const luma = 0.2126*r + 0.7152*g + 0.0722*b;
+  return luma < 128;
+};
 
 export default function GroupsEdit() {
   const { id } = useParams();
@@ -19,24 +52,28 @@ export default function GroupsEdit() {
   const { t } = useLanguage();
   const { auth } = useContext(AuthContext) || {};
 
+  /* ===== Cores do tema  ===== */
   const c = theme?.colors || {};
   const paper = c.background?.paper || "#111827";
-  const border = c.menu?.border || "rgba(255,255,255,0.12)";
-  const text = c.text?.primary || "#E5E7EB";
-  const muted = c.text?.secondary || "#94A3B8";
-  const errorCol = c.error?.main || "#EF4444";
-  const hover = c.menu?.hoverBg || "rgba(255,255,255,0.06)";
+  const DARK = isDarkColor(paper);
+  const FG = DARK ? "#ffffff" : "#000000"; 
+  const borderSoft = c.menu?.border || (DARK ? "rgba(255,255,255,.35)" : "rgba(0,0,0,.35)");
+  const text = c.text?.primary || (DARK ? "#E5E7EB" : "#0F172A");
+  const muted = c.text?.secondary || (DARK ? "#94A3B8" : "#334155");
+  const errorCol = c.error?.main || (DARK ? "#F87171" : "#B91C1C");
+  const hover = c.menu?.hoverBg || alpha(borderSoft, 0.25);
 
-  const tr = (k, fb) => { try { return k?.includes(".") ? t(k) : (k ?? fb); } catch { return fb ?? k; } };
+  const tr = (k, fb) => { try { const v = t?.(k); return v && v !== k ? v : (fb ?? k); } catch { return fb ?? k; } };
 
+  /* ===== Estado ===== */
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
   const [name, setName] = useState("");
   const [memberInput, setMemberInput] = useState("");
-  const [members, setMembers] = useState([]);  
-  const [admin, setAdmin] = useState(null);    
+  const [members, setMembers] = useState([]);
+  const [admin, setAdmin] = useState(null);
 
   // roles/permissões
   const roles = useMemo(() => {
@@ -59,9 +96,10 @@ export default function GroupsEdit() {
     name: String(
       u?.fullName ?? u?.FullName ??
       ([(u?.firstName ?? u?.FirstName), (u?.lastName ?? u?.FamilyName)].filter(Boolean).join(" ")).trim()
-    )
+    ),
   });
 
+  /* ===== Load ===== */
   const load = async () => {
     setLoading(true);
     setErr("");
@@ -83,7 +121,7 @@ export default function GroupsEdit() {
       const normalized = (gMembers || []).map(toMemberObj);
       const filtered = normalized.filter(m => m.id && m.id !== adminId);
       setMembers(filtered);
-    } catch (e) {
+    } catch {
       setErr(tr("groups.load_failed", "Could not load the group."));
     } finally {
       setLoading(false);
@@ -91,6 +129,7 @@ export default function GroupsEdit() {
   };
   useEffect(() => { if (id) load(); }, [id]);
 
+  /* ===== Ações ===== */
   const addByEmail = async () => {
     setErr("");
     const email = memberInput.trim();
@@ -103,10 +142,7 @@ export default function GroupsEdit() {
     }
     try {
       setBusy(true);
-      const res = await apiCall.get("/User/GetProfile", {
-        params: { UserEmail: email }
-      });
-
+      const res = await apiCall.get("/User/GetProfile", { params: { UserEmail: email } });
       if (res?.ok && res?.data) {
         const u = res.data;
         const obj = toMemberObj({
@@ -132,7 +168,6 @@ export default function GroupsEdit() {
       setBusy(false);
     }
   };
-
   const removeMember = (mid) => setMembers(prev => prev.filter(m => m.id !== mid));
 
   const handleSave = async () => {
@@ -153,7 +188,6 @@ export default function GroupsEdit() {
 
     setBusy(true);
     try {
-      // Envio por QUERY (sem body)
       const res = await apiCall.post("/Group/Update", null, {
         params: { id, name: name.trim(), usersId },
         paramsSerializer: (params) => {
@@ -171,20 +205,24 @@ export default function GroupsEdit() {
       } else {
         setErr(res?.error?.message || tr("groups.save_failed", "Could not save the group."));
       }
-    } catch (e) {
+    } catch {
       setErr(tr("groups.save_failed", "Could not save the group."));
     } finally {
       setBusy(false);
     }
   };
 
+  /* ===== UI ===== */
   if (loading) {
     return (
       <div className="mx-auto">
         <div className="flex items-center justify-between mb-6">
           <Title text={tr("groups.edit_title", "Edit group")} />
         </div>
-        <div className="rounded-2xl p-10 animate-pulse" style={{ backgroundColor: paper, border: `1px solid ${border}`, minHeight: 220 }} />
+        <div
+          className="rounded-2xl p-10 animate-pulse"
+          style={{ backgroundColor: paper, border: `2px solid ${FG}`, minHeight: 220 }}
+        />
       </div>
     );
   }
@@ -196,20 +234,34 @@ export default function GroupsEdit() {
       </div>
 
       {err && (
-        <div className="mb-4 rounded-lg p-3 text-sm"
-             style={{ backgroundColor: `${errorCol}1a`, color: errorCol, border: `1px solid ${errorCol}55` }}>
+        <div
+          className="mb-4 rounded-lg p-3 text-sm"
+          style={{
+            backgroundColor: alpha(errorCol, 0.12),
+            color: errorCol,
+            border: `1px solid ${alpha(errorCol, 0.45)}`
+          }}
+        >
           {err}
         </div>
       )}
 
       {!amGroupAdmin && (
-        <div className="mb-4 text-sm rounded-lg p-3"
-             style={{ backgroundColor: hover, color: text, border: `1px solid ${border}` }}>
+        <div
+          className="mb-4 text-sm rounded-lg p-3"
+          style={{ backgroundColor: hover, color: text, border: `1px solid ${borderSoft}` }}
+        >
           {tr("groups.readonly", "You are not the admin of this group or you don't have the GROUPADMINISTRATOR role. The form is read-only.")}
         </div>
       )}
 
-      <Card className="rounded-2xl p-6" style={{ backgroundColor: paper, border: `1px solid ${border}` }}>
+      <Card
+        className="rounded-2xl p-6"
+        style={{
+          backgroundColor: paper,
+          border: `2px solid ${FG}`, 
+        }}
+      >
         <div className="space-y-6">
           <Input
             label={tr("common.name", "Name")}
@@ -249,11 +301,12 @@ export default function GroupsEdit() {
                     if (amGroupAdmin) addByEmail();
                   }
                 }}
-                style={{ backgroundColor: paper, color: text, borderColor: border }}
+                style={{ backgroundColor: paper, color: text, borderColor: borderSoft }}
               />
 
               <Button
                 type="button"
+                variant="primary"
                 size="md"
                 onClick={addByEmail}
                 disabled={!amGroupAdmin || !memberInput || !isEmail(memberInput) || busy}
@@ -269,7 +322,7 @@ export default function GroupsEdit() {
                   <span
                     key={m.id}
                     className="inline-flex items-center gap-2 px-2 py-1 rounded-full text-sm"
-                    style={{ backgroundColor: hover, color: text, border: `1px solid ${border}` }}
+                    style={{ backgroundColor: hover, color: text, border: `1px solid ${borderSoft}` }}
                     title={m.name || m.email}
                   >
                     {m.name ? `${m.name} — ${m.email}` : m.email}
@@ -293,8 +346,16 @@ export default function GroupsEdit() {
             <Button type="button" variant="secondary" onClick={() => navigate(-1)}>
               {tr("common.cancel", "Cancel")}
             </Button>
-            <Button type="button" variant="success" onClick={handleSave} disabled={!amGroupAdmin || busy}>
-              {busy ? tr("common.saving", "Saving…") : tr("common.save", "Save")}
+            <Button
+              type="button"
+              variant="primary"  
+              onClick={handleSave}
+              disabled={!amGroupAdmin || busy}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Save className="h-5 w-5" />
+                {busy ? tr("common.saving", "Saving…") : tr("common.save", "Save")}
+              </span>
             </Button>
           </div>
         </div>

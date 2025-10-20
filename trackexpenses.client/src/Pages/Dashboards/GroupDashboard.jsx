@@ -1,4 +1,3 @@
-// src/pages/Groups/GroupDashboard.jsx
 import React, { useEffect, useMemo, useRef, useState, useContext } from "react";
 import Title from "../../components/Titles/TitlePage";
 import StatCard from "../../components/UI/StatCard";
@@ -20,6 +19,29 @@ const N = (v) => (v == null ? 0 : Number(v));
 const pct = (p, t) => (N(t) > 0 ? N(p) / N(t) : 0);
 const fmtCurrency = (v, cur = "EUR") =>
   new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(N(v));
+
+/* --- helpers de cor --- */
+function parseToRGB(c) {
+  if (!c) return { r: 11, g: 18, b: 32 };
+  if (c.startsWith("#")) {
+    const h = c.replace("#", "");
+    const full = h.length === 3 ? h.split("").map(x => x + x).join("") : h;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    return { r, g, b };
+  }
+  if (c.startsWith("rgb")) {
+    const nums = c.replace(/[^\d.,]/g, "").split(",").map(Number);
+    return { r: nums[0] ?? 11, g: nums[1] ?? 18, b: nums[2] ?? 32 };
+  }
+  return { r: 11, g: 18, b: 32 };
+}
+function isDarkColor(color) {
+  const { r, g, b } = parseToRGB(color || "#0b1220");
+  const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luma < 128;
+}
 
 /* === componente principal === */
 export default function GroupDashboard() {
@@ -51,13 +73,16 @@ export default function GroupDashboard() {
   const [currency, setCurrency] = useState("EUR");
   const [error, setError] = useState("");
 
-  const c = theme.colors;
-  const success = c?.success?.main || "#16a34a";
-  const danger = c?.error?.main || "#ef4444";
-  const border = c?.secondary?.light || "#334155";
+  const c = theme?.colors || {};
   const bg = c?.background?.paper;
+  const isDark = isDarkColor(bg);
+  const FG = isDark ? "#FFFFFF" : "#000000";           
+  const BORDER_W = 2;                                   
+  const success = c?.success?.main || "#16a34a";
+  const danger  = c?.error?.main   || "#ef4444";
+  const gridColor = isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.25)";
 
-  const showIncome = flt.type === "both" || flt.type === "income";
+  const showIncome  = flt.type === "both" || flt.type === "income";
   const showExpense = flt.type === "both" || flt.type === "expense";
 
   /* --- Fetch grupos --- */
@@ -186,7 +211,7 @@ export default function GroupDashboard() {
 
   return (
     <div className="space-y-6 min-h-screen">
-      <Title text={t("dashboard.title")} subText={t("dashboard.subtitle")} />
+      <Title text={t("dashboard.groupTitle")} subText={t("dashboard.subtitle")} />
 
       {/* KPIs acima do filtro */}
       {summary && (
@@ -226,7 +251,14 @@ export default function GroupDashboard() {
       />
 
       {/* Evolução */}
-      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
+      <div
+        className="rounded-2xl p-4"
+        style={{
+          border: `${BORDER_W}px solid ${FG}`, 
+          background: bg,
+          color: FG,
+        }}
+      >
         <div className="mb-3 font-medium flex items-center gap-2">
           <span>{t("dashboard.charts.evolution")}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
@@ -234,40 +266,23 @@ export default function GroupDashboard() {
         <EvolutionChart
           data={series}
           currency={currency}
-          colors={{ grid: border, text: theme.colors.text?.secondary, income: success, expense: danger }}
+          colors={{ grid: gridColor, textStrong: FG, income: success, expense: danger }}
           showIncome={showIncome}
           showExpense={showExpense}
           bg={bg}
-          border={border}
-        />
-      </div>
-
-      {/* Status */}
-      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
-        <div className="mb-3 font-medium flex items-center gap-2">
-          <span>{t("dashboard.charts.status")}</span>
-          {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
-        </div>
-        <StatusStackedBar
-          data={statusMerged}
-          t={t}
-          colors={{
-            grid: border,
-            text: theme.colors.text?.secondary,
-            income: theme.colors.success?.main,
-            incomePending: theme.colors.primary?.main || "#3b82f6",
-            expense: theme.colors.error?.main,
-            expensePending: "#94a3b8",
-          }}
-          showIncome={showIncome}
-          showExpense={showExpense}
-          bg={bg}
-          border={border}
+          border={FG} 
         />
       </div>
 
       {/* Categorias */}
-      <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
+      <div
+        className="rounded-2xl p-4"
+        style={{
+          border: `${BORDER_W}px solid ${FG}`, 
+          background: bg,
+          color: FG,
+        }}
+      >
         <div className="mb-3 font-medium flex items-center gap-2">
           <span>{t("dashboard.charts.categories")}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
@@ -280,7 +295,11 @@ export default function GroupDashboard() {
             income: t("dashboard.charts.income"),
             expense: t("dashboard.charts.expenses"),
           }}
-          themeColors={{ bg, border, text: theme.colors.text?.primary }}
+          themeColors={{
+            bg,
+            border: FG, 
+            text: FG,   
+          }}
         />
       </div>
 

@@ -10,7 +10,8 @@ import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 import QRCodeFromPhoto from "../../components/QR/QRCodeFromPhoto";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
-import { QrCode, Camera } from "lucide-react"; 
+import { QrCode, Camera } from "lucide-react";
+import { useTheme } from "../../styles/Theme/Theme";
 
 const EP_CREATE   = "Expenses/CreateExpensesWithImage";
 const EP_WALLETS  = "/wallets?includeArchived=true";
@@ -34,77 +35,57 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   { key: "others", value: "Others" },
 ];
 
+/* ─────────────────────────── */
+/* Tile QR com contraste tema  */
+/* ─────────────────────────── */
 function QRUploadTile({ onDecoded, onError, title, subtitle, label }) {
   const shellRef = useRef(null);
+  const { theme, isDarkMode } = useTheme();
+  const CONTRAST = isDarkMode ? "#FFFFFF" : "#000000";
+  const PAPER = theme?.colors?.background?.paper ?? (isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.9)");
+  const LINE_SOFT = isDarkMode ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.20)";
+
   const trigger = () => {
     const input = shellRef.current?.querySelector("input[type='file']");
     input?.click();
   };
 
   return (
-    <div className="flex flex-wrap items-start gap-4" style={{ color: "#000" }}>
-      {/* Texto */}
+    <div className="flex flex-wrap items-start gap-4" style={{ color: CONTRAST }}>
+      {/* Texto (hairline próprio) */}
       <div
-        className="
-          basis-[320px] min-w-[260px] grow
-          p-3 rounded-lg ring-1 ring-black/20 bg-black/5
-          space-y-1
-        "
-        style={{ wordBreak: "break-word", hyphens: "auto" }}
+        className="basis-[320px] min-w-[260px] grow p-3 rounded-lg"
+        style={{
+          background: PAPER,
+          border: `1px solid ${LINE_SOFT}`,
+          wordBreak: "break-word",
+          hyphens: "auto",
+        }}
       >
         <div className="text-sm font-medium leading-snug">{title}</div>
         <p className="text-xs opacity-80 leading-relaxed">{subtitle}</p>
       </div>
 
+      {/* Botão com hairline suave */}
       <div className="shrink-0 w-full md:w-auto flex justify-center md:justify-start">
         <button
           type="button"
           onClick={trigger}
-          className="
-            w-36 md:w-40 aspect-square rounded-lg
-            border border-black/30 bg-black/5
-            hover:bg-black/10 hover:border-black/50
-            grid place-items-center gap-2 transition relative
-          "
+          className="w-36 md:w-40 aspect-square rounded-lg grid place-items-center gap-2 transition"
           title={typeof title === "string" ? title : "Scan QR"}
-          style={{ color: "#000" }}
+          style={{
+            color: CONTRAST,
+            background: "transparent",
+            border: `1px solid ${LINE_SOFT}`,
+          }}
         >
-          {/* Wrapper dos ícones */}
           <span className="relative inline-block" style={{ width: 52, height: 52 }}>
-            {/* QR por trás */}
-            <QrCode
-              className="absolute inset-0 w-12 h-12 z-0 opacity-95"
-              strokeWidth={2}
-              aria-hidden
-              style={{ shapeRendering: "geometricPrecision" }}
-            />
-
-            {/* Câmara à frente, sem fundo, com halo branco para legibilidade */}
-            <span
-              className="absolute -bottom-[2px] -right-[2px] z-10 pointer-events-none"
-              aria-hidden
-            >
-              {/* Halo branco por baixo */}
-              <Camera
-                className="w-5 h-5 absolute inset-0"
-                stroke="#ffffff"
-                strokeWidth={3}
-                style={{ shapeRendering: "geometricPrecision" }}
-              />
-              {/* Traço principal por cima */}
-              <Camera
-                className="w-5 h-5 relative"
-                stroke="currentColor"
-                strokeWidth={2}
-                style={{
-                  shapeRendering: "geometricPrecision",
-                  filter:
-                    "drop-shadow(0 0 0.25px rgba(0,0,0,.35)) drop-shadow(0 0.5px 0.5px rgba(0,0,0,.25))",
-                }}
-              />
+            <QrCode className="absolute inset-0 w-12 h-12 z-0 opacity-95" strokeWidth={2} aria-hidden color={CONTRAST} />
+            <span className="absolute -bottom-[2px] -right-[2px] z-10 pointer-events-none" aria-hidden>
+              <Camera className="w-5 h-5 absolute inset-0" stroke="#ffffff" strokeWidth={3} />
+              <Camera className="w-5 h-5 relative" stroke={CONTRAST} strokeWidth={2} />
             </span>
           </span>
-
           <span className="text-xs opacity-90 px-2">{label}</span>
         </button>
       </div>
@@ -120,6 +101,15 @@ function QRUploadTile({ onDecoded, onError, title, subtitle, label }) {
 export default function CreateExpense() {
   const { auth } = useContext(AuthContext) || {};
   const { t } = useLanguage ? useLanguage() : { t: () => undefined };
+  const { theme, isDarkMode } = useTheme();
+
+  // Paleta coerente
+  const CONTRAST = isDarkMode ? "#FFFFFF" : "#000000";
+  const PAPER = theme?.colors?.background?.paper ?? (isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.9)");
+  const LINE = CONTRAST;                                 // 1px sólido para o Card
+  const LINE_SOFT = isDarkMode ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.20)"; // hairlines internos
+
+  const cardStyle = { background: PAPER, border: `1px solid ${LINE}` }; // <- borda fina única
 
   const [kind, setKind] = useState("one");
 
@@ -182,7 +172,7 @@ export default function CreateExpense() {
   }, []);
   useEffect(() => { if (form.WalletId) localStorage.setItem(LAST_WALLET_KEY, form.WalletId); }, [form.WalletId]);
 
-  // Categorias do histórico 
+  // Categorias do histórico
   const [historyCategories, setHistoryCategories] = useState([]);
   useEffect(() => {
     let alive = true;
@@ -190,16 +180,10 @@ export default function CreateExpense() {
       try {
         const email = auth?.Email || "";
         if (!email) return;
-        const res = await apiCall.get(EP_LIST_EXP, {
-          params: { userEmail: email },
-          validateStatus: () => true,
-        });
+        const res = await apiCall.get(EP_LIST_EXP, { params: { userEmail: email }, validateStatus: () => true });
         if (!alive) return;
-        const list = (res?.status >= 200 && res?.status < 300)
-          ? (Array.isArray(res.data) ? res.data : unwrap(res.data))
-          : [];
-        const cats = Array.from(new Set(list.map(e => N(e?.Category)).filter(Boolean)))
-          .sort((a, b) => a.localeCompare(b));
+        const list = (res?.status >= 200 && res?.status < 300) ? (Array.isArray(res.data) ? res.data : unwrap(res.data)) : [];
+        const cats = Array.from(new Set(list.map(e => N(e?.Category)).filter(Boolean))).sort((a, b) => a.localeCompare(b));
         setHistoryCategories(cats);
       } catch {/* ignore */ }
     })();
@@ -209,47 +193,33 @@ export default function CreateExpense() {
   const mergedCategories = useMemo(() => {
     const baseValuesLower = new Set(DEFAULT_EXPENSE_CATEGORIES.map(c => c.value.toLowerCase()));
     const extras = historyCategories.filter(c => !baseValuesLower.has(c.toLowerCase()));
-    const defaults = DEFAULT_EXPENSE_CATEGORIES.map(c => ({
-      value: c.value,
-      labelKey: `categories.${c.key}`,
-      labelFallback: c.value,
-    }));
-    const extraItems = extras.map(x => ({
-      value: x,
-      labelKey: null,
-      labelFallback: x,
-    }));
+    const defaults = DEFAULT_EXPENSE_CATEGORIES.map(c => ({ value: c.value, labelKey: `categories.${c.key}`, labelFallback: c.value }));
+    const extraItems = extras.map(x => ({ value: x, labelKey: null, labelFallback: x }));
     return [...defaults, ...extraItems];
   }, [historyCategories]);
 
-  // validações (live)
+  // validações
   const runValidation = (state) => {
     const F = state || form;
     const e = {};
     const totalNum = Number(F.Value);
     const paidNum = Number(F.PayAmount || 0);
-
     if (!N(F.Name))      e.Name = (t?.("errors.required") || "Required");
     if (!N(F.WalletId))  e.WalletId = (t?.("errors.required") || "Required");
     if (!N(F.StartDate)) e.StartDate = (t?.("errors.required") || "Required");
-
     if (!(totalNum > 0)) e.Value = (t?.("errors.invalidTotal") || "Total must be greater than zero.");
     if (paidNum < 0)     e.PayAmount = (t?.("errors.invalidPayAmount") || "Paid amount cannot be negative.");
     if (paidNum > totalNum) e.PayAmount = (t?.("errors.invalidPayAmount") || "Paid amount cannot exceed total value.");
-
     if (F.EndDate) {
       const s = new Date(F.StartDate), en = new Date(F.EndDate);
       if (en < s) e.EndDate = t?.("errors.invalidEndDate") || "End date cannot be before start date.";
     }
-
     setFieldErrors(e);
     const ok = Object.keys(e).length === 0;
     setFormValid(ok);
     return ok;
   };
-  useEffect(() => {
-    runValidation(form);
-  }, [form.Name, form.WalletId, form.StartDate, form.EndDate, form.Value, form.PayAmount]);
+  useEffect(() => { runValidation(form); }, [form.Name, form.WalletId, form.StartDate, form.EndDate, form.Value, form.PayAmount]);
 
   // KPIs
   const total = Number(form.Value || 0);
@@ -268,23 +238,14 @@ export default function CreateExpense() {
       if (i > 0) map[p.slice(0, i).trim()] = p.slice(i + 1).trim();
     }
     const dateRaw = map.F;
-    const date = /^\d{8}$/.test(dateRaw)
-      ? `${dateRaw.slice(0,4)}-${dateRaw.slice(4,6)}-${dateRaw.slice(6,8)}`
-      : undefined;
+    const date = /^\d{8}$/.test(dateRaw) ? `${dateRaw.slice(0,4)}-${dateRaw.slice(4,6)}-${dateRaw.slice(6,8)}` : undefined;
     const totalParsed = map.O ? Number(String(map.O).replace(",", ".")) : undefined;
     const atcud = map.H;
     const docNo = map.G;
     const sellerNIF = map.A;
-    const desc = [docNo ? `#${docNo}` : null, atcud ? `ATCUD:${atcud}` : null, sellerNIF ? `NIF:${sellerNIF}` : null]
-      .filter(Boolean).join(" • ");
+    const desc = [docNo ? `#${docNo}` : null, atcud ? `ATCUD:${atcud}` : null, sellerNIF ? `NIF:${sellerNIF}` : null].filter(Boolean).join(" • ");
 
-    setForm((f) => ({
-      ...f,
-      Description: desc ? `Fatura ${desc}` : f.Description,
-      StartDate: date || f.StartDate,
-      Value: totalParsed != null ? String(totalParsed) : f.Value,
-    }));
-
+    setForm((f) => ({ ...f, Description: desc ? `Fatura ${desc}` : f.Description, StartDate: date || f.StartDate, Value: totalParsed != null ? String(totalParsed) : f.Value }));
     setKind("one");
     setQrError(null);
   };
@@ -326,7 +287,6 @@ export default function CreateExpense() {
     fd.append("Periodicity", Periodicity);
     fd.append("Category", form.Category || "");
     fd.append("WalletId", form.WalletId || "");
-
     if (form.Image) {
       fd.append("UploadType", form.UploadType || "ExpenseImage");
       fd.append("Image", form.Image);
@@ -341,14 +301,8 @@ export default function CreateExpense() {
     if (!runValidation(form)) return;
     setSubmitting(true);
     try {
-      const res = await apiCall.post(EP_CREATE, buildFormData(), {
-        headers: { "Content-Type": "multipart/form-data" },
-        validateStatus: () => true,
-      });
-      if (res?.status >= 200 && res?.status < 300) {
-        window.location.assign("/Expenses");
-        return;
-      }
+      const res = await apiCall.post(EP_CREATE, buildFormData(), { headers: { "Content-Type": "multipart/form-data" }, validateStatus: () => true });
+      if (res?.status >= 200 && res?.status < 300) { window.location.assign("/Expenses"); return; }
       setErr(res?.data?.message || res?.error?.message || (t?.("errors.createExpense") || "Could not create expense."));
     } catch {
       setErr(t?.("errors.network") || "Network error while creating expense.");
@@ -369,61 +323,36 @@ export default function CreateExpense() {
       : "Scan from photo";
 
   return (
-    <div className="space-y-6" style={{ color: "#000" }}>
+    <div className="space-y-6" style={{ color: CONTRAST }}>
       <Title text={t?.("expenses.new") || "New expense"} />
 
-      {/* KPIs */}
+      {/* KPIs (StatCard já está afinado) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard
-          title={t?.("expenses.total") || "Total"}
-          value={total.toLocaleString(undefined, { style: "currency", currency: "EUR" })}
-        />
-        <StatCard
-          title={t?.("expenses.paid") || "Already paid"}
-          value={Number(form.PayAmount || 0).toLocaleString(undefined, { style: "currency", currency: "EUR" })}
-        />
-        <StatCard
-          title={t?.("expenses.remaining") || "Remaining"}
-          value={remaining.toLocaleString(undefined, { style: "currency", currency: "EUR" })}
-        />
+        <StatCard title={t?.("expenses.total") || "Total"} value={total.toLocaleString(undefined, { style: "currency", currency: "EUR" })} />
+        <StatCard title={t?.("expenses.paid") || "Already paid"} value={Number(form.PayAmount || 0).toLocaleString(undefined, { style: "currency", currency: "EUR" })} />
+        <StatCard title={t?.("expenses.remaining") || "Remaining"} value={remaining.toLocaleString(undefined, { style: "currency", currency: "EUR" })} />
       </div>
 
       {/* QR + Photo */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card do QR */}
-        <Card className="overflow-hidden">
+        {/* Card do QR — borda 1px */}
+        <Card className="overflow-hidden" style={cardStyle}>
           <div className="grid gap-4 [grid-template-columns:minmax(0,1fr)]">
-            <QRUploadTile
-              onDecoded={onQRDecoded}
-              onError={setQrError}
-              title={t?.("qr.title") || "Read invoice QR (Portugal)"}
-              subtitle={t?.("qr.subtitle") || "Upload a clear photo of the QR. I'll auto-fill date, value and description."}
-              label={scanLabel}
-            />
-            {qrError && (
-              <p className="text-sm md:text-base text-red-600" style={{ wordBreak: "break-word", hyphens: "auto" }}>
-                {qrError}
-              </p>
-            )}
+            <QRUploadTile onDecoded={onQRDecoded} onError={setQrError} title={t?.("qr.title") || "Read invoice QR (Portugal)"} subtitle={t?.("qr.subtitle") || "Upload a clear photo of the QR. I'll auto-fill date, value and description."} label={scanLabel} />
+            {qrError && <p className="text-sm md:text-base text-red-600" style={{ wordBreak: "break-word", hyphens: "auto" }}>{qrError}</p>}
           </div>
         </Card>
 
-        {/* Card da foto/preview */}
-        <Card className="overflow-hidden">
+        {/* Card da foto/preview — borda 1px */}
+        <Card className="overflow-hidden" style={cardStyle}>
           <div className="flex flex-wrap items-start gap-4">
             {/* Texto/controles */}
             <div className="basis-[320px] min-w-[260px] grow order-1 md:order-2">
-              <label className="block mb-2 text-sm font-medium" style={{ color: "#000" }}>
+              <label className="block mb-2 text-sm font-medium" style={{ color: CONTRAST }}>
                 {t?.("receipt.label") || "Receipt / expense photo"}
               </label>
 
-              <input
-                ref={receiptInputRef}
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleReceiptPick(e.target.files?.[0] || null)}
-                className="hidden"
-              />
+              <input ref={receiptInputRef} type="file" accept="image/*" onChange={(e) => handleReceiptPick(e.target.files?.[0] || null)} className="hidden" />
 
               <div className="flex flex-wrap items-center gap-2">
                 <Button type="button" onClick={openReceiptPicker} className="h-11 rounded-md px-4">
@@ -442,26 +371,17 @@ export default function CreateExpense() {
               </p>
             </div>
 
-            {/* Preview */}
+            {/* Preview (hairline próprio, NÃO borda do Card) */}
             <div className="order-2 md:order-1 w-full md:w-auto flex justify-center md:justify-start">
               <button
                 type="button"
                 onClick={() => receiptPreviewUrl && setLightboxOpen(true)}
                 title={receiptPreviewUrl ? (t?.("receipt.clickToEnlarge") || "Click to enlarge") : ""}
-                className="
-                  w-[180px] md:w-[200px] aspect-square rounded-lg overflow-hidden
-                  border border-black/30 bg-black/5
-                  hover:bg-black/10 hover:border-black/50
-                  grid place-items-center
-                "
-                style={{ color: "#000" }}
+                className="w-[180px] md:w-[200px] aspect-square rounded-lg overflow-hidden grid place-items-center"
+                style={{ color: CONTRAST, background: "transparent", border: `1px solid ${LINE_SOFT}` }}
               >
                 {receiptPreviewUrl ? (
-                  <img
-                    src={receiptPreviewUrl}
-                    alt={t?.("receipt.previewAlt") || "Receipt preview"}
-                    className="max-w-full max-h-full object-contain object-center block"
-                  />
+                  <img src={receiptPreviewUrl} alt={t?.("receipt.previewAlt") || "Receipt preview"} className="max-w-full max-h-full object-contain object-center block" />
                 ) : (
                   <span className="text-xs opacity-70 px-2 text-center">
                     {t?.("receipt.noPreview") || "No preview"}
@@ -473,44 +393,24 @@ export default function CreateExpense() {
         </Card>
       </div>
 
-      <Card>
+      {/* Seletor de método — borda 1px */}
+      <Card style={cardStyle}>
         <div className="flex flex-wrap items-center justify-evenly gap-3 py-4">
-          <Button
-            type="button"
-            variant={kind === "one" ? "primary" : "secondary"}
-            onClick={() => setKind("one")}
-            className="h-12 w-60 text-base rounded-lg"
-          >
+          <Button type="button" variant={kind === "one" ? "primary" : "secondary"} onClick={() => setKind("one")} className="h-12 w-60 text-base rounded-lg">
             {t?.("expenses.method.one") || "One-off"}
           </Button>
-          <Button
-            type="button"
-            variant={kind === "installments" ? "primary" : "secondary"}
-            onClick={() => setKind("installments")}
-            className="h-12 w-60 text-base rounded-lg"
-          >
+          <Button type="button" variant={kind === "installments" ? "primary" : "secondary"} onClick={() => setKind("installments")} className="h-12 w-60 text-base rounded-lg">
             {t?.("expenses.method.installments") || "Installments (credit)"}
           </Button>
-          <Button
-            type="button"
-            variant={kind === "recurring" ? "primary" : "secondary"}
-            onClick={() => setKind("recurring")}
-            className="h-12 w-60 text-base rounded-lg"
-          >
+          <Button type="button" variant={kind === "recurring" ? "primary" : "secondary"} onClick={() => setKind("recurring")} className="h-12 w-60 text-base rounded-lg">
             {t?.("expenses.method.recurring") || "Recurring"}
           </Button>
         </div>
 
         {kind === "installments" && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Input
-              label={t?.("expenses.installments.count") || "Number of installments"}
-              type="number"
-              min="1"
-              value={form.RepeatCount}
-              onChange={(e) => set("RepeatCount", e.target.value)}
-            />
-            <div className="self-end text-sm opacity-80 md:col-span-2 min-w-0" style={{ color: "#000" }}>
+            <Input label={t?.("expenses.installments.count") || "Number of installments"} type="number" min="1" value={form.RepeatCount} onChange={(e) => set("RepeatCount", e.target.value)} />
+            <div className="self-end text-sm opacity-80 md:col-span-2 min-w-0" style={{ color: CONTRAST }}>
               {(t?.("expenses.installments.each") || "Each installment ≈")} {isFinite(perInstallment) ? perInstallment.toFixed(2) : "—"} €
               <span className="ml-2 opacity-70">{t?.("expenses.installments.note") || "(uses “Paid already” as the down payment)"} </span>
             </div>
@@ -519,86 +419,33 @@ export default function CreateExpense() {
 
         {kind === "recurring" && (
           <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Select
-              label={t?.("expenses.recurring.periodicity") || "Periodicity"}
-              value={form.Periodicity}
-              onChange={(e) => { set("Periodicity", e.target.value); }}
-            >
+            <Select label={t?.("expenses.recurring.periodicity") || "Periodicity"} value={form.Periodicity} onChange={(e) => { set("Periodicity", e.target.value); }}>
               {["Daily","Weekly","Monthly","Yearly","Endless"].map((p, i) => (
                 <option key={`p-${i}`} value={p}>{t?.(`periodicity.${p.toLowerCase()}`) || p}</option>
               ))}
             </Select>
-            <Input
-              label={t?.("expenses.recurring.repeatCount") || "Repetitions (optional)"}
-              type="number"
-              min="1"
-              value={form.RepeatCount}
-              onChange={(e) => set("RepeatCount", e.target.value)}
-            />
+            <Input label={t?.("expenses.recurring.repeatCount") || "Repetitions (optional)"} type="number" min="1" value={form.RepeatCount} onChange={(e) => set("RepeatCount", e.target.value)} />
           </div>
         )}
       </Card>
 
-      {/* Main form */}
+      {/* Main form — borda 1px */}
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Card>
+        <Card style={cardStyle}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label={t?.("expenses.form.name") || "Name"}
-              value={form.Name}
-              onChange={(e) => set("Name", e.target.value)}
-              required
-              error={attemptedSubmit ? fieldErrors.Name : undefined}
-            />
-            <Select
-              label={t?.("expenses.form.wallet") || "Wallet"}
-              value={form.WalletId}
-              onChange={(e) => { set("WalletId", e.target.value); }}
-              required
-            >
+            <Input label={t?.("expenses.form.name") || "Name"} value={form.Name} onChange={(e) => set("Name", e.target.value)} required error={attemptedSubmit ? fieldErrors.Name : undefined} />
+            <Select label={t?.("expenses.form.wallet") || "Wallet"} value={form.WalletId} onChange={(e) => { set("WalletId", e.target.value); }} required>
               {walletOptions.map((w, i) => (<option key={w.id || `w-${i}`} value={w.id}>{w.name || "—"}</option>))}
             </Select>
 
-            <Input
-              label={t?.("expenses.form.total") || "Total amount"}
-              type="number"
-              step="0.01"
-              value={form.Value}
-              onChange={(e) => set("Value", e.target.value)}
-              required
-              error={attemptedSubmit ? fieldErrors.Value : undefined}
-            />
-            <Input
-              label={t?.("expenses.form.paidAlready") || "Paid already (optional)"}
-              type="number"
-              step="0.01"
-              value={form.PayAmount}
-              onChange={(e) => set("PayAmount", e.target.value)}
-              error={attemptedSubmit ? fieldErrors.PayAmount : undefined}
-            />
+            <Input label={t?.("expenses.form.total") || "Total amount"} type="number" step="0.01" value={form.Value} onChange={(e) => set("Value", e.target.value)} required error={attemptedSubmit ? fieldErrors.Value : undefined} />
+            <Input label={t?.("expenses.form.paidAlready") || "Paid already (optional)"} type="number" step="0.01" value={form.PayAmount} onChange={(e) => set("PayAmount", e.target.value)} error={attemptedSubmit ? fieldErrors.PayAmount : undefined} />
 
-            <Input
-              label={t?.("expenses.form.startDate") || "Start date"}
-              type="date"
-              value={form.StartDate}
-              onChange={(e) => set("StartDate", e.target.value)}
-              required
-              error={attemptedSubmit ? fieldErrors.StartDate : undefined}
-            />
-            <Input
-              label={t?.("expenses.form.endDate") || "End date (optional)"}
-              type="date"
-              value={form.EndDate}
-              onChange={(e) => set("EndDate", e.target.value)}
-              error={attemptedSubmit ? fieldErrors.EndDate : undefined}
-            />
+            <Input label={t?.("expenses.form.startDate") || "Start date"} type="date" value={form.StartDate} onChange={(e) => set("StartDate", e.target.value)} required error={attemptedSubmit ? fieldErrors.StartDate : undefined} />
+            <Input label={t?.("expenses.form.endDate") || "End date (optional)"} type="date" value={form.EndDate} onChange={(e) => set("EndDate", e.target.value)} error={attemptedSubmit ? fieldErrors.EndDate : undefined} />
 
             {/* Category */}
-            <Select
-              label={t?.("expenses.form.category") || "Category"}
-              value={form.Category}
-              onChange={(e) => set("Category", e.target.value)}
-            >
+            <Select label={t?.("expenses.form.category") || "Category"} value={form.Category} onChange={(e) => set("Category", e.target.value)}>
               <option value="">{t?.("common.select_option") || "Select an option"}</option>
               {mergedCategories.map((c, i) => (
                 <option key={`cat-${i}`} value={c.value}>
@@ -609,12 +456,7 @@ export default function CreateExpense() {
             </Select>
           </div>
 
-          <TextArea
-            label={t?.("expenses.form.description") || "Description"}
-            rows={4}
-            value={form.Description}
-            onChange={(e) => set("Description", e.target.value)}
-          />
+          <TextArea label={t?.("expenses.form.description") || "Description"} rows={4} value={form.Description} onChange={(e) => set("Description", e.target.value)} />
         </Card>
 
         {err && (
@@ -625,17 +467,11 @@ export default function CreateExpense() {
       </form>
 
       {/* Footer buttons */}
-      <div className="mt-6 pt-4 flex flex-wrap gap-3 items-center justify-between">
+      <div className="mt-6 pt-4 flex flex-wrap gap-3 items-center justify-between" style={{ borderTop: `1px solid ${LINE_SOFT}` }}>
         <Button type="button" variant="secondary" onClick={() => window.history.back()} disabled={submitting} className="h-11 rounded-md px-4">
           {t?.("common.cancel") || "Cancel"}
         </Button>
-        <Button
-          type="submit"
-          onClick={handleSubmit}
-          disabled={submitting || !formValid}
-          title={!formValid ? (t?.("common.fixErrors") || "Fix the errors above to continue") : ""}
-          className="h-11 rounded-md px-4"
-        >
+        <Button type="submit" onClick={handleSubmit} disabled={submitting || !formValid} title={!formValid ? (t?.("common.fixErrors") || "Fix the errors above to continue") : ""} className="h-11 rounded-md px-4">
           {submitting ? (t?.("common.saving") || "Saving...") : (t?.("common.create") || "Create")}
         </Button>
       </div>

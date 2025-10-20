@@ -5,69 +5,74 @@ const ThemeContext = createContext();
 const lightTheme = {
   colors: {
     primary: {
-      main: "#1D4ED8",   
-      light: "#2A6CFF",  
-      dark: "#1E40AF",   
+      main: "#1D4ED8",
+      light: "#2A6CFF",
+      dark: "#1E40AF",
     },
     secondary: {
-      main: "#4B5563",   
-      light: "#D1D5DB", 
-      dark: "#1F2937",   
+      main: "#4B5563",
+      light: "#D1D5DB",
+      dark: "#1F2937",
     },
     background: {
-      default: "#FAFAFA", 
-      paper: "#FAFAFA",  
+      default: "#FAFAFA",
+      paper: "#FAFAFA",
     },
     menu: {
-      bg: "#F1F5F9",                      
-      border: "#CBD5E1",                  
-      text: "#111827",                  
-      muted: "#374151",                   
-      hoverBg: "rgba(0,0,0,0.06)",       
-      activeBg: "rgba(59,130,246,0.18)",  
-      activeText: "#1D4ED8",             
+      bg: "#F1F5F9",
+      border: "#CBD5E1",
+      text: "#111827",
+      muted: "#374151",
+      hoverBg: "rgba(0,0,0,0.06)",
+      activeBg: "rgba(59,130,246,0.18)",
+      activeText: "#1D4ED8",
     },
     text: {
-      primary: "#0F172A",  
+      primary: "#0F172A",
       secondary: "#334155",
     },
     success: {
-      main: "#15803D", 
+      main: "#15803D",
       light: "#CBEFD9",
     },
     error: {
-      main: "#B91C1C", 
+      main: "#B91C1C",
       light: "#FBD5D5",
     },
     card: {
-      bg: "#FAFAFA",                    
-      border: "#CBD5E1",                 
-      shadow: "rgba(0, 0, 0, 0.08)",    
+      bg: "#FAFAFA",
+      border: "#CBD5E1",
+      shadow: "rgba(0, 0, 0, 0.08)",
     },
     input: {
-      bg: "#FAFAFA",     
-      border: "#94A3B8", 
-      focus: "#1D4ED8",  
+      bg: "#FAFAFA",
+      border: "#94A3B8",
+      focus: "#1D4ED8",
       placeholder: "#64748B",
     },
     button: {
       primary: {
-        bg: "#1D4ED8",   
+        bg: "#1D4ED8",
         hover: "#1E40AF",
         text: "#FFFFFF",
       },
       secondary: {
-        bg: "#E5E7EB",   
+        bg: "#E5E7EB",
         hover: "#CBD5E1",
-        text: "#0F172A", 
+        text: "#0F172A",
       },
     },
-    premium: {
-      gold: "#E6C200", 
-    },
+
+    // PREMIUM (LIGHT): azul mais suave + gold mais escuro
+premium: {
+  gold: "#7A5F00",   // dourado mais fechado (tom ouro antigo)
+  text: "#7A5F00",   // igual p/ coerência
+  bg: "#A0BDE8",     // azul mais escuro, menos saturado
+  border: "#5C4500", // dá um contorno leve e elegante
+},
+
   },
 };
-
 
 const darkTheme = {
   colors: {
@@ -127,10 +132,15 @@ const darkTheme = {
         bg: "#334155",
         hover: "#475569",
         text: "#E2E8F0",
-      },  
+      },
     },
+
+    // PREMIUM (DARK): gold com fundo azul (mantido)
     premium: {
-      gold: "#FFD700",
+      gold: "#FFD700",    // retrocompat
+      text: "#FFD700",
+      bg: "#1E3A8A",      // azul profundo por baixo do badge
+      border: "#60A5FA",  // contorno azul clarinho
     },
   },
 };
@@ -148,9 +158,7 @@ export function ThemeProvider({ children }) {
     document.documentElement.classList.toggle("dark", isDarkMode);
   }, [isDarkMode]);
 
-  const toggleTheme = () => {
-    setIsDarkMode((prev) => !prev);
-  };
+  const toggleTheme = () => setIsDarkMode((prev) => !prev);
 
   return (
     <ThemeContext.Provider value={{ theme, isDarkMode, toggleTheme }}>
@@ -161,8 +169,6 @@ export function ThemeProvider({ children }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useTheme must be used within a ThemeProvider");
-  }
+  if (!context) throw new Error("useTheme must be used within a ThemeProvider");
   return context;
 }

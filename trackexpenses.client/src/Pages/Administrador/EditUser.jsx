@@ -11,18 +11,15 @@ import {
   Phone,
   Lock,
   Shield,
-  Key,
-  Camera,
-  Users,
   Eye,
   EyeOff,
   RotateCcw,
+  Camera,
 } from "lucide-react";
 import { useLanguage } from "../../utilis/Translate/LanguageContext";
 import AuthContext from "../../services/Authentication/AuthContext";
 import Button from "../../components/Buttons/Button";
 
-/* helpers p/ paths e URL absoluto da foto */
 const normPath = (p) => (p || "").toString().replace(/\\/g, "/").replace(/^\/+/, "");
 const stripTrailing = (s) => (s || "").replace(/\/+$/g, "");
 const buildFileUrl = (filesBase, partialOrAbsolute) => {
@@ -33,6 +30,29 @@ const buildFileUrl = (filesBase, partialOrAbsolute) => {
   return `${root}/${normPath(p)}?t=${Date.now()}`;
 };
 
+function parseToRGB(c) {
+  if (!c || typeof c !== "string") return { r: 11, g: 18, b: 32 };
+  if (c.startsWith("#")) {
+    const h = c.slice(1);
+    const full = h.length === 3 ? h.split("").map(x => x + x).join("") : h;
+    return {
+      r: parseInt(full.slice(0, 2), 16),
+      g: parseInt(full.slice(2, 4), 16),
+      b: parseInt(full.slice(4, 6), 16),
+    };
+  }
+  if (c.startsWith("rgb")) {
+    const nums = c.replace(/[^\d.,]/g, "").split(",").map(Number);
+    return { r: nums[0] ?? 11, g: nums[1] ?? 18, b: nums[2] ?? 32 };
+  }
+  return { r: 11, g: 18, b: 32 };
+}
+function isDarkColor(color) {
+  const { r, g, b } = parseToRGB(color || "#0b1220");
+  const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luma < 128;
+}
+
 function EditUserProfile() {
   const { id, email } = useParams();
   const decodedEmail = decodeURIComponent(email || "").trim();
@@ -40,6 +60,16 @@ function EditUserProfile() {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { auth, setAuth, roles } = useContext(AuthContext) || {};
+
+  const bgPaper = theme?.colors?.background?.paper;
+  const DARK = isDarkColor(bgPaper);
+  const FG = DARK ? "#ffffff" : "#000000"; 
+  const BORDER_W = 2;
+
+  const DIVIDER =
+    theme?.colors?.secondary?.light ||
+    (DARK ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.25)");
+  const DIVIDER_W = 1;
 
   const [user, setUser] = useState(null);
   const [formData, setFormData] = useState({});
@@ -120,7 +150,6 @@ function EditUserProfile() {
         groupMembers: data.GroupMembers || [],
       };
 
-      // Photo + nome a partir do endpoint dedicado
       const np = await safeGet(
         `/User/GetPhotoProfileAndName/${encodeURIComponent(decodedEmail)}`,
         { signal }
@@ -172,7 +201,6 @@ function EditUserProfile() {
     return () => controller.abort();
   }, [decodedEmail, id]);
 
-  // --------------------- IMAGEM: selecionar / remover / upload -------------
   const handleImageClick = () => fileInputRef.current?.click();
 
   const handleImageSelect = (e) => {
@@ -211,7 +239,7 @@ function EditUserProfile() {
   const uploadImage = async () => {
     if (!selectedImage || !id) return null;
     const imageFormData = new FormData();
-    imageFormData.append("photo", selectedImage); // <-- como no teu código que funciona
+    imageFormData.append("photo", selectedImage);
 
     try {
       const response = await apiCall.post(
@@ -246,7 +274,7 @@ function EditUserProfile() {
     let finalImagePath = formData.profileImage || user?.profileImage || "";
     if (selectedImage) {
       const uploaded = await uploadImage();
-      if (!uploaded) return; // aborta se falhar upload
+      if (!uploaded) return; 
       finalImagePath = uploaded;
     }
 
@@ -266,9 +294,8 @@ function EditUserProfile() {
       setSelectedImage(null);
       setImagePreview(null);
 
-      // propaga URL absoluto para Sidebar/Topbar + cache-buster
       const absolute = buildFileUrl(FILES_BASE, finalImagePath);
-      setAuth?.((prev) => ({ ...prev, path: absolute || prev?.path }));
+      setAuth?.((prev) => ({ ...prev, path: absolute || prev?.path } ));
       window.dispatchEvent(new CustomEvent("avatar-updated", { detail: { url: absolute } }));
 
       navigate("/users");
@@ -353,12 +380,23 @@ function EditUserProfile() {
         </div>
       )}
 
+      {/* CARTÃO */}
       <div
-        className="bg-white rounded-xl shadow-md overflow-hidden"
-        style={{ backgroundColor: theme.colors.background.paper, opacity: loadFailed ? 0.6 : 1 }}
+        className="rounded-2xl shadow-md overflow-hidden"
+        style={{
+          backgroundColor: theme.colors.background.paper,
+          opacity: loadFailed ? 0.6 : 1,
+          border: `${BORDER_W}px solid ${FG}`,
+        }}
       >
-        {/* Profile Header */}
-        <div className="px-6 py-8 border-b" style={{ borderColor: theme.colors.secondary.light }}>
+        {/* Profile Header  */}
+        <div
+          className="px-6 py-8 border-b"
+          style={{
+            borderColor: DIVIDER,          
+            borderBottomWidth: DIVIDER_W,
+          }}
+        >
           <div className="flex items-center space-x-6">
             <div className="relative">
               <div
@@ -366,7 +404,7 @@ function EditUserProfile() {
                   loadFailed ? "pointer-events-none" : "cursor-pointer"
                 }`}
                 style={{ backgroundColor: theme.colors.primary.main }}
-                onClick={!loadFailed ? handleImageClick : undefined}
+                onClick={!loadFailed ? () => fileInputRef.current?.click() : undefined}
                 title={t("common.click_to_change_photo")}
                 aria-label={t("common.click_to_change_photo")}
               >
@@ -388,7 +426,12 @@ function EditUserProfile() {
                   variant="danger"
                   size="sm"
                   fullWidth={false}
-                  onClick={removeImage}
+                  onClick={() => {
+                    setSelectedImage(null);
+                    setImagePreview(null);
+                    setUser((prev) => (prev ? { ...prev, profileImage: "" } : prev));
+                    setFormData((prev) => ({ ...prev, profileImage: "" }));
+                  }}
                   className="absolute -top-2 -right-2 !p-1 !w-7 !h-7 grid place-items-center rounded-full"
                   title={t("common.remove_photo")}
                   aria-label={t("common.remove_photo")}
@@ -401,7 +444,23 @@ function EditUserProfile() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/gif"
-                onChange={handleImageSelect}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  setImageError(null);
+                  if (!file) return;
+                  const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/gif"];
+                  if (!validTypes.includes(file.type)) {
+                    setImageError(t("profile.image_invalid_format"));
+                    return;
+                  }
+                  if (file.size > 5 * 1024 * 1024) {
+                    setImageError(t("profile.image_too_large"));
+                    return;
+                  }
+                  setSelectedImage(file);
+                  const url = URL.createObjectURL(file);
+                  setImagePreview(url);
+                }}
                 className="hidden"
                 disabled={loadFailed}
               />
@@ -418,18 +477,19 @@ function EditUserProfile() {
               <p className="text-lg" style={{ color: theme.colors.text.secondary }}>
                 {user?.email || t("common.not_provided")}
               </p>
-<div className="mt-2">
-  <span
-    className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
-    style={{
-      backgroundColor: theme.colors.primary.light + "30",
-      color: isPremium ? "gold" : theme.colors.primary.main,
-    }}
-  >
-    <Shield className="h-4 w-4 mr-1" />
-    {isPremium ? "PREMIUM" : "MEMBER"}
-  </span>
-</div>
+
+              <div className="mt-2">
+                <span
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium"
+                  style={{
+                    backgroundColor: theme.colors.primary.light + "30",
+                    color: DARK ? "#FFD700" : (isPremium ? "gold" : theme.colors.primary.main),
+                  }}
+                >
+                  <Shield className="h-4 w-4 mr-1" />
+                  {isPremium ? "PREMIUM" : "MEMBER"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -564,129 +624,37 @@ function EditUserProfile() {
                 <h4 className="text-sm font-medium mb-1" style={{ color: theme.colors.text.secondary }}>
                   {t("common.new_Password")}
                 </h4>
-                <div className="relative">
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password || ""}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    style={{
-                      backgroundColor: theme.colors.background.paper,
-                      borderColor: theme.colors.secondary.light,
-                      color: theme.colors.text.primary,
-                    }}
-                    placeholder={t("profile.password_leave_empty")}
-                    disabled={loadFailed}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute top-1/2 right-3 -translate-y-1/2"
-                    style={{ color: theme.colors.text.secondary, cursor: "pointer" }}
-                    title={showPassword ? t("profile.hide_password") : t("profile.show_password")}
-                    aria-label={showPassword ? t("profile.hide_password") : t("profile.show_password")}
-                    disabled={loadFailed}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password || ""}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full px-3 py-2 pr-10 rounded-md border focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      style={{
+                        backgroundColor: theme.colors.background.paper,
+                        borderColor: theme.colors.secondary.light,
+                        color: theme.colors.text.primary,
+                      }}
+                      placeholder={t("profile.password_leave_empty")}
+                      disabled={loadFailed}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute top-1/2 right-3 -translate-y-1/2"
+                      style={{ color: theme.colors.text.secondary, cursor: "pointer" }}
+                      title={showPassword ? t("profile.hide_password") : t("profile.show_password")}
+                      aria-label={showPassword ? t("profile.hide_password") : t("profile.show_password")}
+                      disabled={loadFailed}
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
               </div>
             </div>
           </div>
 
-          {/* Group Information */}
-          <div className="mt-8 pt-8 border-t" style={{ borderColor: theme.colors.secondary.light }}>
-            <h3 className="text-lg font-semibold mb-6" style={{ color: theme.colors.text.primary }}>
-              {t("profile.group_information")}
-            </h3>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="flex items-start space-x-4">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: theme.colors.success.light + "20" }}>
-                  <Shield className="h-5 w-5" style={{ color: theme.colors.success.main }} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium mb-1" style={{ color: theme.colors.text.secondary }}>
-                    {t("profile.group_name")}
-                  </h4>
-                  <p className="text-base" style={{ color: theme.colors.text.primary }}>
-                    {user?.groupName || t("common.not_provided")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: theme.colors.primary.light + "20" }}>
-                  <Key className="h-5 w-5" style={{ color: theme.colors.primary.main }} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium mb-1" style={{ color: theme.colors.text.secondary }}>
-                    {t("profile.invite_code")}
-                  </h4>
-                  <p className="text-base font-mono" style={{ color: theme.colors.text.primary }}>
-                    {user?.groupId || t("common.not_provided")}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start space-x-4">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: theme.colors.success.light + "20" }}>
-                  <Shield className="h-5 w-5" style={{ color: theme.colors.success.main }} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium mb-1" style={{ color: theme.colors.text.secondary }}>
-                    {t("profile.group_role")}
-                  </h4>
-                  <p className="text-base" style={{ color: theme.colors.text.primary }}>
-                    {user?.groupRole || t("common.not_provided")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="p-2 rounded-lg" style={{ backgroundColor: theme.colors.secondary.light + "20" }}>
-                  <Users className="h-5 w-5" style={{ color: theme.colors.secondary.main }} />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium" style={{ color: theme.colors.text.secondary }}>
-                    {t("profile.group_members")} ({currentGroupMembers.length})
-                  </h4>
-                </div>
-              </div>
-
-              <div className="space-y-2 ml-12">
-                {currentGroupMembers.length === 0 ? (
-                  <p className="text-sm" style={{ color: theme.colors.text.secondary }}>
-                    {t("profile.no_group_members")}
-                  </p>
-                ) : (
-                  currentGroupMembers.map((member, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        fullWidth={false}
-                        onClick={() => {
-                          const updated = [...currentGroupMembers];
-                          updated.splice(index, 1);
-                          setCurrentGroupMembers(updated);
-                        }}
-                        className="!w-10 !h-10 !p-0 grid place-items-center"
-                        title={t("profile.remove_member")}
-                        aria-label={t("profile.remove_member")}
-                        disabled={loadFailed}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                      <span style={{ color: theme.colors.text.primary }}>{member}</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          </div>
+          {/* Group Information  */}
         </div>
       </div>
 

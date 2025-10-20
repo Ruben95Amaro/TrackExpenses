@@ -12,8 +12,9 @@ import TextArea from "../../components/Form/TextArea";
 /* API */
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
+import { useTheme } from "../../styles/Theme/Theme";
 
-/* Endpoints (match backend) */
+/* Endpoints  */
 const EP_GET = (id) => `Earnings/GetById/${id}`;
 const EP_UPDATE = (id) => `Earnings/UpdateEarningWithImage/${id}`;
 const EP_GET_IMG = (id) => `Earnings/GetEarningImage/${id}`;
@@ -42,7 +43,6 @@ const dateOnly = (s) => {
   return isNaN(d) ? String(s).slice(0, 10) : d.toISOString().slice(0, 10);
 };
 
-// parse “1.234,56” / “1234.56”
 const parseMoney = (val) => {
   if (val == null) return 0;
   let s = String(val).trim();
@@ -73,20 +73,6 @@ const makeTransparentPngBlob = () => {
   return new Blob([arr], { type: "image/png" });
 };
 
-/* ───────────────── pills ───────────────── */
-const Pill = ({ tone = "neutral", children }) => {
-  const styles = {
-    neutral: "bg-slate-600/20 text-slate-300",
-    success: "bg-emerald-600/15 text-emerald-300",
-    danger: "bg-rose-600/15 text-rose-400",
-  }[tone];
-  return (
-    <span className={`inline-block px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${styles}`}>
-      {children}
-    </span>
-  );
-};
-
 /* ───────────────── Instance Modal ───────────────── */
 const InstanceModal = React.memo(function InstanceModal({
   open,
@@ -95,6 +81,10 @@ const InstanceModal = React.memo(function InstanceModal({
   onSave,
   onRemovePhoto,
 }) {
+  const { theme, isDarkMode } = useTheme();
+  const CONTRAST = isDarkMode ? "#FFFFFF" : "#000000";
+  const PAPER = theme?.colors?.background?.paper ?? (isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.9)");
+
   const [date, setDate] = useState("");
   const [received, setReceived] = useState("");
   const [file, setFile] = useState(null);
@@ -173,11 +163,26 @@ const InstanceModal = React.memo(function InstanceModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-800 rounded-xl w-full max-w-lg p-4" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="rounded-xl w-full max-w-lg p-4"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: PAPER,
+          color: CONTRAST,
+          boxShadow: `inset 0 0 0 2px ${CONTRAST}, 0 20px 60px rgba(0,0,0,0.35)`,
+        }}
+      >
         <h3 className="text-lg font-semibold mb-3">Edit instance</h3>
 
         {!!error && (
-          <div className="mb-3 text-sm rounded px-3 py-2 bg-red-600/10 text-red-400 ring-1 ring-red-700/30">
+          <div
+            className="mb-3 text-sm rounded px-3 py-2"
+            style={{
+              background: isDarkMode ? "rgba(239,68,68,0.12)" : "rgba(239,68,68,0.12)",
+              color: isDarkMode ? "#fecaca" : "#b91c1c",
+              boxShadow: `inset 0 0 0 1px ${isDarkMode ? "rgba(239,68,68,0.4)" : "rgba(185,28,28,0.35)"}`,
+            }}
+          >
             {error}
           </div>
         )}
@@ -194,26 +199,36 @@ const InstanceModal = React.memo(function InstanceModal({
           <div className="flex items-start gap-3">
             <button
               type="button"
-              className="w-20 h-20 rounded-lg overflow-hidden ring-1 ring-white/10 bg-white/5 flex items-center justify-center shrink-0"
+              className="w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
               onClick={() => previewUrl && window.open(previewUrl, "_blank")}
               title={previewUrl ? "Click to enlarge" : ""}
+              style={{
+                color: CONTRAST,
+                background: "transparent",
+                boxShadow: `inset 0 0 0 1px ${CONTRAST}`,
+              }}
             >
               {previewUrl ? (
                 <img src={previewUrl} alt="Instance" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-[11px] opacity-60 px-2 text-center">No photo</span>
+                <span className="text-[11px] opacity-70 px-2 text-center">No photo</span>
               )}
             </button>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <label className="block text-sm mb-1">Receipt photo (optional)</label>
-                <span className={`ml-2 text-[11px] px-2 py-0.5 rounded ${previewUrl ? "bg-green-600/15 text-green-400" : "bg-red-600/15 text-red-400"}`}>
+                <label className="block text-sm mb-1" style={{ color: CONTRAST }}>Receipt photo (optional)</label>
+                <span
+                  className="ml-2 text-[11px] px-2 py-0.5 rounded"
+                  style={{
+                    background: previewUrl ? "rgba(22,163,74,0.15)" : "rgba(225,29,72,0.15)",
+                    color: previewUrl ? (isDarkMode ? "#86efac" : "#15803d") : (isDarkMode ? "#fecdd3" : "#be123c"),
+                  }}
+                >
                   {previewUrl ? "Has photo" : "No photo"}
                 </span>
               </div>
 
-              {/* file picker like expenses: hidden input + trigger button + filename inline */}
               <input
                 ref={fileRef}
                 type="file"
@@ -225,7 +240,7 @@ const InstanceModal = React.memo(function InstanceModal({
                 <Button type="button" onClick={() => fileRef.current?.click()} className="!h-10 px-4">
                   Choose photo
                 </Button>
-                <div className="text-xs opacity-80 truncate max-w-[18rem]">
+                <div className="text-xs opacity-80 truncate max-w-[18rem]" style={{ color: CONTRAST }}>
                   {fileName || "No file selected"}
                 </div>
               </div>
@@ -241,7 +256,6 @@ const InstanceModal = React.memo(function InstanceModal({
           </div>
         </div>
 
-        {/* footer: Cancel left, Save right */}
         <div className="mt-4 flex items-center justify-between gap-2">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={doSave} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
@@ -256,6 +270,10 @@ export default function EditEarning() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { auth } = useContext(AuthContext) || {};
+  const { theme, isDarkMode } = useTheme();
+  const CONTRAST = isDarkMode ? "#FFFFFF" : "#000000";
+  const PAPER = theme?.colors?.background?.paper ?? (isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.9)");
+  const ROWSEP = isDarkMode ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.22)";
 
   const [model, setModel] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -335,7 +353,6 @@ export default function EditEarning() {
   );
   const pending = Math.max(0, total - alreadyReceived);
 
-  /* save header – only show error if any */
   const saveHeader = useCallback(async () => {
     if (!model) return;
     const fd = new FormData();
@@ -442,8 +459,8 @@ export default function EditEarning() {
     await refreshInstances();
   };
 
-  if (loading) return <div className="p-6 opacity-80">Loading…</div>;
-  if (err) return <div className="p-6 text-red-500">{err}</div>;
+  if (loading) return <div className="p-6 opacity-80" style={{ color: CONTRAST }}>Loading…</div>;
+  if (err) return <div className="p-6" style={{ color: isDarkMode ? "#fecaca" : "#b91c1c" }}>{err}</div>;
   if (!model) return null;
 
   const instancesOrdered = (model?.Instances || [])
@@ -451,7 +468,7 @@ export default function EditEarning() {
     .sort((a, b) => new Date(a.ExpectedDate) - new Date(b.ExpectedDate));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" style={{ color: CONTRAST }}>
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <Title text="Edit earning" />
@@ -469,25 +486,36 @@ export default function EditEarning() {
       </div>
 
       {/* Header photo  */}
-      <Card>
+      <Card style={{ background: PAPER, boxShadow: `inset 0 0 0 2px ${CONTRAST}` }}>
         <div className="flex items-start gap-4">
           <button
             type="button"
-            className="w-28 h-28 rounded-lg overflow-hidden ring-1 ring-white/10 bg-white/5 flex items-center justify-center shrink-0"
+            className="w-28 h-28 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
             onClick={() => earningPreview && setLightboxUrl(earningPreview)}
             title={earningPreview ? "Click to enlarge" : ""}
+            style={{
+              color: CONTRAST,
+              background: "transparent",
+              boxShadow: `inset 0 0 0 1px ${CONTRAST}`,
+            }}
           >
             {earningPreview ? (
               <img src={earningPreview} alt="Earning photo" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-xs opacity-60 px-2 text-center">No photo</span>
+              <span className="text-xs opacity-70 px-2 text-center">No photo</span>
             )}
           </button>
 
           <div className="flex-1">
             <div className="flex items-center justify-between">
-              <label className="block mb-1 text-sm font-medium">Earning photo (optional)</label>
-              <span className={`ml-2 text-[11px] px-2 py-0.5 rounded ${earningPreview ? "bg-green-600/15 text-green-400" : "bg-red-600/15 text-red-400"}`}>
+              <label className="block mb-1 text-sm font-medium" style={{ color: CONTRAST }}>Earning photo (optional)</label>
+              <span
+                className="ml-2 text-[11px] px-2 py-0.5 rounded"
+                style={{
+                  background: earningPreview ? "rgba(22,163,74,0.15)" : "rgba(225,29,72,0.15)",
+                  color: earningPreview ? (isDarkMode ? "#86efac" : "#15803d") : (isDarkMode ? "#fecdd3" : "#be123c"),
+                }}
+              >
                 {earningPreview ? "Has photo" : "No photo"}
               </span>
             </div>
@@ -498,7 +526,7 @@ export default function EditEarning() {
               accept="image/*"
               onChange={(e) => onSelectEarningFile(e.target.files?.[0] || null)}
             />
-            <p className="text-xs opacity-70 mt-1">This is stored on the earning (not on instances).</p>
+            <p className="text-xs opacity-80 mt-1">This is stored on the earning (not on instances).</p>
 
             <div className="mt-2 flex flex-wrap gap-2">
               <Button onClick={uploadEarningImage} disabled={!earningFile || earningUploading}>
@@ -516,11 +544,17 @@ export default function EditEarning() {
       </Card>
 
       {/* Instances table*/}
-      <Card>
+      <Card style={{ background: PAPER, boxShadow: `inset 0 0 0 2px ${CONTRAST}` }}>
         <div className="overflow-x-auto">
-          <table className="min-w-[56rem] w-full text-center">
-            <thead>
-              <tr className="uppercase text-xs opacity-70">
+          <table
+            className="min-w-[56rem] w-full text-center"
+            style={{ color: CONTRAST, borderCollapse: "separate", borderSpacing: 0 }}
+          >
+            <thead
+              className="uppercase text-xs"
+              style={{ opacity: 0.75, borderBottom: `1px solid ${CONTRAST}` }}
+            >
+              <tr>
                 <th className="py-2 px-4">Date</th>
                 <th className="py-2 px-4">Amount</th>
                 <th className="py-2 px-4">Paid</th>
@@ -530,15 +564,19 @@ export default function EditEarning() {
               </tr>
             </thead>
             <tbody>
-              {instancesOrdered.map((inst) => {
+              {instancesOrdered.map((inst, idx) => {
                 const value = Number(inst?.Amount || 0);
                 const paid = inst.IsReceived || inst.ReceivedAtUtc ? value : Number(inst?.TempReceivedAmount || 0);
                 const isPaid = value > 0 && paid >= value;
                 const hasPhoto = !!inst?.ImageUrl;
                 const photoUrl = hasPhoto ? (inst.ImageUrl.startsWith("/") ? inst.ImageUrl : `/${inst.ImageUrl}`) : null;
+                const isLast = idx === instancesOrdered.length - 1;
 
                 return (
-                  <tr key={inst.Id} className="border-t border-white/10">
+                  <tr
+                    key={inst.Id}
+                    style={{ borderTop: `1px solid ${ROWSEP}`, borderBottom: isLast ? `1px solid ${CONTRAST}` : undefined }}
+                  >
                     <td className="py-2 px-4">
                       {inst?.ExpectedDate ? new Date(inst.ExpectedDate).toLocaleDateString() : "-"}
                     </td>
@@ -546,17 +584,27 @@ export default function EditEarning() {
                       {value.toLocaleString(undefined, { style: "currency", currency: CURRENCY })}
                     </td>
                     <td className="py-2 px-4">
-                      {paid
-                        ? paid.toLocaleString(undefined, { style: "currency", currency: CURRENCY })
-                        : "—"}
+                      {paid ? paid.toLocaleString(undefined, { style: "currency", currency: CURRENCY }) : "—"}
                     </td>
                     <td className="py-2 px-4">
-                      <span className={`px-2 py-1 rounded text-xs inline-block ${isPaid ? "bg-green-600/15 text-green-400" : "bg-red-600/15 text-red-400"}`}>
+                      <span
+                        className="px-2 py-1 rounded text-xs inline-block"
+                        style={{
+                          background: isPaid ? "rgba(22,163,74,0.15)" : "rgba(225,29,72,0.15)",
+                          color: isPaid ? (isDarkMode ? "#86efac" : "#15803d") : (isDarkMode ? "#fecdd3" : "#be123c"),
+                        }}
+                      >
                         {isPaid ? "Paid" : "Not paid"}
                       </span>
                     </td>
                     <td className="py-2 px-4">
-                      <span className={`px-2 py-1 rounded text-xs inline-block ${hasPhoto ? "bg-green-600/15 text-green-400" : "bg-red-600/15 text-red-400"}`}>
+                      <span
+                        className="px-2 py-1 rounded text-xs inline-block"
+                        style={{
+                          background: hasPhoto ? "rgba(22,163,74,0.15)" : "rgba(225,29,72,0.15)",
+                          color: hasPhoto ? (isDarkMode ? "#86efac" : "#15803d") : (isDarkMode ? "#fecdd3" : "#be123c"),
+                        }}
+                      >
                         {hasPhoto ? "Has photo" : "No photo"}
                       </span>
                       {hasPhoto && photoUrl && (
@@ -578,7 +626,7 @@ export default function EditEarning() {
 
               {!instancesOrdered.length && (
                 <tr>
-                  <td className="py-6 px-4 opacity-60" colSpan={6}>
+                  <td className="py-6 px-4 opacity-60" colSpan={6} style={{ borderBottom: `1px solid ${CONTRAST}` }}>
                     No instances.
                   </td>
                 </tr>

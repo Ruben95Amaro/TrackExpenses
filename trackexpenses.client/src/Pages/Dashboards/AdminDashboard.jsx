@@ -20,6 +20,28 @@ const N = (v) => (v == null ? 0 : Number(v));
 const fmtCurrency = (v, cur = "EUR") =>
   new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(N(v));
 
+function parseToRGB(c) {
+  if (!c) return { r: 11, g: 18, b: 32 };
+  if (c.startsWith("#")) {
+    const h = c.replace("#", "");
+    const full = h.length === 3 ? h.split("").map(x => x + x).join("") : h;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    return { r, g, b };
+  }
+  if (c.startsWith("rgb")) {
+    const nums = c.replace(/[^\d.,]/g, "").split(",").map(Number);
+    return { r: nums[0] ?? 11, g: nums[1] ?? 18, b: nums[2] ?? 32 };
+  }
+  return { r: 11, g: 18, b: 32 };
+}
+function isDarkColor(color) {
+  const { r, g, b } = parseToRGB(color);
+  const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return luma < 128;
+}
+
 /* === componente principal === */
 export default function AdminDashboard() {
   const { theme } = useTheme();
@@ -45,11 +67,16 @@ export default function AdminDashboard() {
   const [currency, setCurrency] = useState("EUR");
   const [error, setError] = useState("");
 
-  const c = theme.colors;
+  const c = theme?.colors || {};
   const success = c?.success?.main || "#16a34a";
   const danger  = c?.error?.main   || "#ef4444";
-  const border  = c?.secondary?.light || "#334155";
   const bg      = c?.background?.paper;
+
+  const isDark = isDarkColor(bg || "#0b1220");
+  const autoText = isDark ? "#FFFFFF" : "#000000";
+
+  const border = isDark ? "#FFFFFF" : "#000000";
+  const grid   = isDark ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.25)";
 
   const showIncome  = flt.type === "both" || flt.type === "income";
   const showExpense = flt.type === "both" || flt.type === "expense";
@@ -72,12 +99,11 @@ export default function AdminDashboard() {
         if (mapped[0]) {
           setFlt((p) => ({ ...p, userId: mapped[0].id, walletId: "" }));
         }
-      } catch {/* ignore */}
+      } catch { /* ignore */ }
     })();
     return () => { alive = false; };
   }, []);
 
-  /* --- Carregar carteiras quando muda o utilizador --- */
   useEffect(() => {
     let alive = true;
     if (!flt.userId) { setWallets([]); setFlt((p) => ({ ...p, walletId: "" })); return; }
@@ -162,7 +188,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6 min-h-screen">
-      <Title text={t?.("dashboard.title") || "Dashboard"} subText={t?.("dashboard.subtitle")} />
+      <Title text={t?.("dashboard.adminTitle") || "Dashboard"} subText={t?.("dashboard.subtitle")} />
 
       {/* KPIs */}
       {summary && (
@@ -197,7 +223,7 @@ export default function AdminDashboard() {
         <EvolutionChart
           data={series}
           currency={currency}
-          colors={{ grid: border, text: theme.colors.text?.secondary, income: success, expense: danger }}
+          colors={{ grid, textStrong: autoText, income: success, expense: danger }}
           showIncome={showIncome}
           showExpense={showExpense}
           bg={bg}
@@ -219,7 +245,7 @@ export default function AdminDashboard() {
             income: t?.("dashboard.charts.income") || "Income",
             expense: t?.("dashboard.charts.expenses") || "Expenses",
           }}
-          themeColors={{ bg, border, text: theme.colors.text?.primary }}
+          themeColors={{ bg, border, text: autoText }}
         />
       </div>
 
