@@ -189,10 +189,10 @@ export default function ListExpenses() {
 
   /* ------------------------------ table cols ---------------------------- */
   const columns = [
-    { key: "name", headerKey: "name", accessor: (w) => N(w?.Name) || "-" },
+    { key: "name", headerKey: t?.("earnings.table.title") || "name", accessor: (w) => N(w?.Name) || "-" },
     {
       key: "wallet",
-      headerKey: "wallet",
+      headerKey: t?.("earnings.table.wallet") || "Wallet",  
       accessor: (w) => {
         const nm = walletMap[w?.WalletId] || "-";
         return nm !== "-" ? <Badge tone="info">{nm}</Badge> : "-";
@@ -200,13 +200,13 @@ export default function ListExpenses() {
     },
     {
       key: "category",
-      headerKey: "category",
+      headerKey: t?.("earnings.table.category") || "Category",
       accessor: (w) =>
         N(w?.Category) ? <Badge tone="warn">{N(w?.Category)}</Badge> : "-",
     },
     {
       key: "value",
-      headerKey: "amount",
+      headerKey: t?.("earnings.table.amount") || "Amount",
       accessor: (w) => (
         <span style={{ color: theme.colors.error.main, fontWeight: 600 }}>
           {Number(w?.Value || 0).toLocaleString(undefined, {
@@ -218,7 +218,7 @@ export default function ListExpenses() {
     },
     {
       key: "paid",
-      headerKey: "paid",
+      headerKey: t?.("earnings.table.paid") || "paid", 
       accessor: (w) => {
         const inst = unwrap(w?.Instances);
         const paid = inst.filter((i) => i.IsPaid).length;
@@ -229,7 +229,7 @@ export default function ListExpenses() {
     },
     {
       key: "next",
-      headerKey: "date",
+      headerKey: t?.("earnings.table.date") || "Date", 
       accessor: (w) => {
         const next = unwrap(w?.Instances)
           .filter((i) => !i.IsPaid)
@@ -305,19 +305,16 @@ export default function ListExpenses() {
           {
             key: "category",
             type: "select",
-            label: t?.("expenses.category") || "Category",
             options: categoryOptions,
           },
           {
             key: "wallet",
             type: "select",
-            label: t?.("expenses.wallet") || "Wallet",
             options: walletOptions,
           },
           {
             key: "paid",
             type: "select",
-            label: t?.("expenses.paymentStatus") || "Payment status",
             options: [
               { value: "all", label: t?.("common.all") || "All" },
               {

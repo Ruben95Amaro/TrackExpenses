@@ -217,7 +217,7 @@ export default function AdminDashboard() {
       {/* Evolução */}
       <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
         <div className="mb-3 font-medium flex items-center gap-2">
-          <span>{t?.("dashboard.charts.evolution") || "Evolution"}</span>
+          <span>{t?.("charts.evolution") || "Evolution"}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
         </div>
         <EvolutionChart
@@ -234,7 +234,7 @@ export default function AdminDashboard() {
       {/* Categorias */}
       <div className="rounded-2xl border p-4" style={{ borderColor: border, background: bg }}>
         <div className="mb-3 font-medium flex items-center gap-2">
-          <span>{t?.("dashboard.charts.categories") || "Categories"}</span>
+          <span>{t?.("charts.categories") || "Categories"}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
         </div>
         <CategoriesPies
@@ -242,8 +242,8 @@ export default function AdminDashboard() {
           expenseData={catsExpense}
           currency={currency}
           titles={{
-            income: t?.("dashboard.charts.income") || "Income",
-            expense: t?.("dashboard.charts.expenses") || "Expenses",
+            income: t?.("charts.income") || "Income",
+            expense: t?.("charts.expenses") || "Expenses",
           }}
           themeColors={{ bg, border, text: autoText }}
         />

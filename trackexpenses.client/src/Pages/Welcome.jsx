@@ -22,12 +22,12 @@ function Welcome() {
           className="text-4xl md:text-6xl font-bold"
           style={{ color: c.text?.primary }}
         >
-          {t("welcome.take_control_of_your")}{" "}
-          <span className="text-blue-500">{t("welcome.finances")}</span>
+          Take Control of Your{" "}
+          <span className="text-blue-500">Finances</span>
         </h1>
 
         <p className="text-xl" style={{ color: c.text?.secondary }}>
-          {t("welcome.subtitle")}
+          Track your expenses, monitor your income, and achieve your financial goals with our comprehensive financial management platform.
         </p>
 
         <Link
@@ -35,7 +35,7 @@ function Welcome() {
           className="inline-flex items-center px-6 py-3 text-lg font-medium text-white rounded-lg hover:bg-blue-600 transition-colors"
           style={{ backgroundColor: c.primary?.main }}
         >
-          {t("welcome.get_started")}
+          Get Started
           <ArrowRight className="ml-2 h-5 w-5" />
         </Link>
       </div>
@@ -53,10 +53,10 @@ function Welcome() {
             className="text-xl font-semibold mb-2"
             style={{ color: c.text?.primary }}
           >
-            {t("welcome.features.expense.title")}
+            Expense Tracking
           </h3>
           <p style={{ color: c.text?.secondary }}>
-            {t("welcome.features.expense.desc")}
+            Keep track of every penny with our intuitive expense tracking system.
           </p>
         </div>
 
@@ -71,10 +71,10 @@ function Welcome() {
             className="text-xl font-semibold mb-2"
             style={{ color: c.text?.primary }}
           >
-            {t("welcome.features.income.title")}
+            Income Management
           </h3>
           <p style={{ color: c.text?.secondary }}>
-            {t("welcome.features.income.desc")}
+            Monitor your income sources and analyze your earning patterns.
           </p>
         </div>
 
@@ -89,10 +89,10 @@ function Welcome() {
             className="text-xl font-semibold mb-2"
             style={{ color: c.text?.primary }}
           >
-            {t("welcome.features.security.title")}
+            Secure Platform
           </h3>
           <p style={{ color: c.text?.secondary }}>
-            {t("welcome.features.security.desc")}
+           Your financial data is protected with industry-standard security measures.
           </p>
         </div>
       </div>

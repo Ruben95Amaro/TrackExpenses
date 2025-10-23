@@ -200,7 +200,6 @@ export default function ListWallets() {
           {
             key: "status",
             type: "select",
-            label: t("wallets.status"),
             options: statusOptions,
             defaultValue: "all",
           },

@@ -315,9 +315,7 @@ export default function GenericFilter({
           >
             {showSearch && (
               <div className={fieldWrap}>
-                <FieldLabel theme={theme}>
-                  {t?.("common.search") || "Search"}
-                </FieldLabel>
+
                 <SearchCapsule
                   value={safeValue.q ?? ""}
                   onChange={(q) => onChange({ ...safeValue, q })}

@@ -234,10 +234,6 @@ export default function DashboardFilterBar({
 
   const txt = {
     filters: t?.("common.filters") || "Filters",
-    user: t?.("dashboard.filters.user") || "User",
-    wallet: t?.("dashboard.filters.wallet") || "Wallet",
-    from: t?.("dashboard.filters.from") || "From",
-    to: t?.("dashboard.filters.to") || "To",
     day: t?.("dashboard.filters.day") || "Day",
     week: t?.("dashboard.filters.week") || "Week",
     month: t?.("dashboard.filters.month") || "Month",

@@ -13,7 +13,7 @@ export default function CategoriesPies({
   currency = "EUR",
   themeColors = {},
 }) {
-  const { t } = useLanguage(); 
+  const { t } = useLanguage();
 
   const { bg = "#0b1220", border = "#334155", text = "#e5e7eb" } = themeColors;
 

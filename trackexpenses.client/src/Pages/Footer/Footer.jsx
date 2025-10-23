@@ -25,7 +25,8 @@ export default function Footer() {
         boxShadow: footShadow,
       }}
     >
-      © {new Date().getFullYear()} TrackExpenses. All rights reserved.
+      © Ruben Monteiro Amaro, No. 30397, Bachelor’s Degree in Computer Engineering, Academic Year 2024–2025, ISTEC Lisbon. 
+      {/* © {new Date().getFullYear()} Ruben Monteiro Amaro  TrackExpenses. All rights reserved. */}
     </footer>
   );
 }

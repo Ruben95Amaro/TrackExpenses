@@ -198,7 +198,6 @@ export default function UsersTable() {
           {
             key: "group",
             type: "select",
-            label: t?.("common.groups") || "Groups",
             options: groupOptions,
           },
         ]}

@@ -184,10 +184,10 @@ export default function ListEarnings() {
 
   /* ------------------------------ table cols ---------------------------- */
   const columns = [
-    { key: "title", headerKey: "earnings.table.title", accessor: (e) => N(e?.Title) || "-" },
+    { key: "title", headerKey: t?.("earnings.table.title") || "Title", accessor: (e) => N(e?.Title) || "-" },
     {
       key: "wallet",
-      headerKey: "wallet",
+      headerKey: t?.("earnings.table.wallet") || "Wallet",
       accessor: (e) => {
         const nm = walletMap[e?.WalletId] || "-";
         return nm !== "-" ? <Badge tone="info">{nm}</Badge> : "-";
@@ -195,12 +195,13 @@ export default function ListEarnings() {
     },
     {
       key: "category",
-      headerKey: "earnings.table.category",
+      headerKey: t?.("earnings.table.category") || "Category",
       accessor: (e) => (N(e?.Category) ? <Badge tone="warn">{N(e?.Category)}</Badge> : "-"),
     },
     {
       key: "value",
-      headerKey: "earnings.table.total",
+      headerKey: t?.("earnings.table.total") || "Total",
+      
       accessor: (e) => (
         <span style={{ color: theme.colors.success.main, fontWeight: 600 }}>
           {Number(e?.Amount || 0).toLocaleString(undefined, {
@@ -212,7 +213,7 @@ export default function ListEarnings() {
     },
     {
       key: "received",
-      headerKey: "earnings.table.instances",
+      headerKey: t?.("earnings.table.instances") || "Instances",
       accessor: (e) => {
         const inst = unwrap(e?.Instances);
         const rec = inst.filter((i) => i.IsReceived || i.ReceivedAtUtc).length;
@@ -299,12 +300,11 @@ export default function ListEarnings() {
           t?.("earnings.searchPlaceholder") || "Search name, description or category..."
         }
         filters={[
-          { key: "category", type: "select", label: t?.("earnings.category") || "Category", options: categoryOptions },
-          { key: "wallet",   type: "select", label: t?.("earnings.wallet")   || "Wallet",   options: walletOptions },
+          { key: "category", type: "select",  options: categoryOptions },
+          { key: "wallet",   type: "select",    options: walletOptions },
           {
             key: "received",
             type: "select",
-            label: t?.("earnings.receivedStatus") || "Received status",
             options: [
               { value: "all", label: t?.("common.all") || "All" },
               { value: "received", label: t?.("earnings.status.received") || "Received" },
@@ -314,7 +314,6 @@ export default function ListEarnings() {
         ]}
       />
 
-      {/* Tabela como em ListExpenses (sem Card), com minTableWidth e truncate */}
       <GenericTable
         filteredData={filtered}
         columns={columns}

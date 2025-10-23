@@ -13,6 +13,7 @@ import TextArea from "../../components/Form/TextArea";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 import { useTheme } from "../../styles/Theme/Theme";
+import { useLanguage } from "../../utilis/Translate/LanguageContext";
 
 /* Endpoints  */
 const EP_GET = (id) => `Earnings/GetById/${id}`;
@@ -82,6 +83,7 @@ const InstanceModal = React.memo(function InstanceModal({
   onRemovePhoto,
 }) {
   const { theme, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const CONTRAST = isDarkMode ? "#FFFFFF" : "#000000";
   const PAPER = theme?.colors?.background?.paper ?? (isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.9)");
 
@@ -120,7 +122,7 @@ const InstanceModal = React.memo(function InstanceModal({
   const doSave = async () => {
     if (busy) return;
     if (exceeds) {
-      setError("Received amount cannot exceed the instance amount.");
+      setError(t("earnings.editPage.errAmountExceeds"));
       return;
     }
     setBusy(true);
@@ -141,7 +143,7 @@ const InstanceModal = React.memo(function InstanceModal({
       onClose();
     } catch (e) {
       setBusy(false);
-      setError(e?.message || "Could not save instance.");
+      setError(e?.message || t("earnings.editPage.errSaveInstance"));
     }
   };
 
@@ -155,7 +157,7 @@ const InstanceModal = React.memo(function InstanceModal({
       if (fileRef.current) fileRef.current.value = "";
     } catch (e) {
       setBusy(false);
-      setError(e?.message || "Could not remove photo.");
+      setError(e?.message || t("earnings.editPage.errRemovePhoto"));
     }
   };
 
@@ -172,7 +174,7 @@ const InstanceModal = React.memo(function InstanceModal({
           boxShadow: `inset 0 0 0 2px ${CONTRAST}, 0 20px 60px rgba(0,0,0,0.35)`,
         }}
       >
-        <h3 className="text-lg font-semibold mb-3">Edit instance</h3>
+        <h3 className="text-lg font-semibold mb-3">{t("earnings.editPage.modalTitle")}</h3>
 
         {!!error && (
           <div
@@ -188,9 +190,12 @@ const InstanceModal = React.memo(function InstanceModal({
         )}
 
         <div className="grid gap-3">
-          <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <Input label={t("earnings.editPage.date")} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           <Input
-            label={`Received amount (expected ${expectedAmount.toLocaleString(undefined, { style: "currency", currency: CURRENCY })})`}
+            label={t("earnings.editPage.receivedAmountExpected").replace(
+              "{amount}",
+              expectedAmount.toLocaleString(undefined, { style: "currency", currency: CURRENCY })
+            )}
             inputMode="decimal"
             value={received}
             onChange={(e) => setReceived(e.target.value)}
@@ -201,7 +206,7 @@ const InstanceModal = React.memo(function InstanceModal({
               type="button"
               className="w-20 h-20 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
               onClick={() => previewUrl && window.open(previewUrl, "_blank")}
-              title={previewUrl ? "Click to enlarge" : ""}
+              title={previewUrl ? t("earnings.editPage.clickToEnlarge") : ""}
               style={{
                 color: CONTRAST,
                 background: "transparent",
@@ -209,15 +214,15 @@ const InstanceModal = React.memo(function InstanceModal({
               }}
             >
               {previewUrl ? (
-                <img src={previewUrl} alt="Instance" className="w-full h-full object-cover" />
+                <img src={previewUrl} alt={t("earnings.editPage.instancePhotoAlt")} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-[11px] opacity-70 px-2 text-center">No photo</span>
+                <span className="text-[11px] opacity-70 px-2 text-center">{t("earnings.editPage.noPhoto")}</span>
               )}
             </button>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <label className="block text-sm mb-1" style={{ color: CONTRAST }}>Receipt photo (optional)</label>
+                <label className="block text-sm mb-1" style={{ color: CONTRAST }}>{t("earnings.editPage.receiptPhotoOptional")}</label>
                 <span
                   className="ml-2 text-[11px] px-2 py-0.5 rounded"
                   style={{
@@ -225,7 +230,7 @@ const InstanceModal = React.memo(function InstanceModal({
                     color: previewUrl ? (isDarkMode ? "#86efac" : "#15803d") : (isDarkMode ? "#fecdd3" : "#be123c"),
                   }}
                 >
-                  {previewUrl ? "Has photo" : "No photo"}
+                  {previewUrl ? t("earnings.editPage.hasPhoto") : t("earnings.editPage.noPhoto")}
                 </span>
               </div>
 
@@ -238,18 +243,18 @@ const InstanceModal = React.memo(function InstanceModal({
               />
               <div className="flex items-center gap-2">
                 <Button type="button" onClick={() => fileRef.current?.click()} className="!h-10 px-4">
-                  Choose photo
+                  {t("common.choosePhoto")}
                 </Button>
                 <div className="text-xs opacity-80 truncate max-w-[18rem]" style={{ color: CONTRAST }}>
-                  {fileName || "No file selected"}
+                  {fileName || t("common.noFileSelected")}
                 </div>
               </div>
 
-              <p className="text-xs opacity-70 mt-2">Optional. Attaches to this instance.</p>
+              <p className="text-xs opacity-70 mt-2">{t("earnings.editPage.photoHintInstance")}</p>
 
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={removePhoto} disabled={busy || !previewUrl}>
-                  Remove current
+                  {t("common.removeCurrent")}
                 </Button>
               </div>
             </div>
@@ -257,8 +262,8 @@ const InstanceModal = React.memo(function InstanceModal({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-2">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={doSave} disabled={busy}>{busy ? "Saving…" : "Save"}</Button>
+          <Button variant="secondary" onClick={onClose}>{t("common.cancel")}</Button>
+          <Button onClick={doSave} disabled={busy}>{busy ? t("common.saving") : t("common.save")}</Button>
         </div>
       </div>
     </div>
@@ -271,6 +276,7 @@ export default function EditEarning() {
   const navigate = useNavigate();
   const { auth } = useContext(AuthContext) || {};
   const { theme, isDarkMode } = useTheme();
+  const { t } = useLanguage();
   const CONTRAST = isDarkMode ? "#FFFFFF" : "#000000";
   const PAPER = theme?.colors?.background?.paper ?? (isDarkMode ? "rgba(2,6,23,0.92)" : "rgba(255,255,255,0.9)");
   const ROWSEP = isDarkMode ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.22)";
@@ -299,7 +305,7 @@ export default function EditEarning() {
       try {
         const res = await apiCall.get(EP_GET(id), { validateStatus: () => true });
         if (!alive) return;
-        if (!ok2xx(res) || !hasBody(res)) throw new Error("Failed to load earning.");
+        if (!ok2xx(res) || !hasBody(res)) throw new Error(t("earnings.editPage.errLoadEarning"));
         const data = res.data || {};
 
         const instances = unwrap(data.Instances).map((x) => ({
@@ -330,13 +336,13 @@ export default function EditEarning() {
           setEarningPreview(rel && rel !== "NoPhoto" ? publicUrl(rel) : null);
         }
       } catch (e) {
-        setErr(e?.message || "Could not load earning.");
+        setErr(e?.message || t("earnings.editPage.errLoadEarning"));
       } finally {
         if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     if (!earningFile) return;
@@ -364,8 +370,8 @@ export default function EditEarning() {
     fd.append("Date", model.FirstExpectedDate || dateOnly(new Date()));
     fd.append("Currency", CURRENCY);
     const r = await apiCall.put(EP_UPDATE(model.Id), fd, { headers: { "Content-Type": "multipart/form-data" }, validateStatus: () => true });
-    if (!ok2xx(r)) alert(r?.data?.message || "Could not save.");
-  }, [model]);
+    if (!ok2xx(r)) alert(r?.data?.message || t("earnings.editPage.errSaveHeader"));
+  }, [model, t]);
 
   /* header photo */
   const onSelectEarningFile = (f) => setEarningFile(f || null);
@@ -377,14 +383,14 @@ export default function EditEarning() {
       fd.append("Image", earningFile);
       const r = await apiCall.post(EP_UPLOAD_IMG(model.Id), fd, { validateStatus: () => true });
       setEarningUploading(false);
-      if (!ok2xx(r)) return alert(r?.data?.message || "Upload failed");
+      if (!ok2xx(r)) return alert(r?.data?.message || t("earnings.editPage.errUpload"));
       const rel = r?.data?.imagePath ?? r?.data;
       setEarningPreview(publicUrl(rel));
       setEarningFile(null);
       if (earningFileInputRef.current) earningFileInputRef.current.value = "";
     } catch (e) {
       setEarningUploading(false);
-      alert(e?.message || "Could not upload photo.");
+      alert(e?.message || t("earnings.editPage.errUpload"));
     }
   };
   const clearEarningPhotoSelection = () => {
@@ -398,11 +404,11 @@ export default function EditEarning() {
       fd.append("Image", new File([makeTransparentPngBlob()], "blank.png", { type: "image/png" }));
       const r = await apiCall.post(EP_UPLOAD_IMG(model.Id), fd, { validateStatus: () => true });
       setEarningUploading(false);
-      if (!ok2xx(r)) return alert(r?.data?.message || "Could not remove photo.");
+      if (!ok2xx(r)) return alert(r?.data?.message || t("earnings.editPage.errRemovePhoto"));
       setEarningPreview(null);
     } catch (e) {
       setEarningUploading(false);
-      alert(e?.message || "Could not remove photo.");
+      alert(e?.message || t("earnings.editPage.errRemovePhoto"));
     }
   };
 
@@ -427,7 +433,7 @@ export default function EditEarning() {
 
   const openInstModal = async (instId) => {
     const r = await apiCall.get(EP_GET_INSTANCE(instId), { validateStatus: () => true });
-    if (!ok2xx(r) || !hasBody(r)) return alert("Could not load instance.");
+    if (!ok2xx(r) || !hasBody(r)) return alert(t("earnings.editPage.errLoadInstance"));
     const inst = r.data;
     setModalInitial({
       Id: inst.Id,
@@ -449,17 +455,17 @@ export default function EditEarning() {
     const fd = new FormData();
     fd.append("image", new File([makeTransparentPngBlob()], "blank.png", { type: "image/png" }));
     const r = await apiCall.post(EP_INST_IMG(iid), fd, { validateStatus: () => true });
-    if (!ok2xx(r)) throw new Error(r?.data?.message || "Could not remove photo.");
+    if (!ok2xx(r)) throw new Error(r?.data?.message || t("earnings.editPage.errRemovePhoto"));
   };
 
   const saveInstance = async (payload, file) => {
     const r = await apiCall.post(EP_UPD_INST, payload, { validateStatus: () => true });
-    if (!ok2xx(r)) return alert(r?.data?.message || "Could not save instance.");
+    if (!ok2xx(r)) return alert(r?.data?.message || t("earnings.editPage.errSaveInstance"));
     if (file) await uploadInstanceImage(payload.Id, file);
     await refreshInstances();
   };
 
-  if (loading) return <div className="p-6 opacity-80" style={{ color: CONTRAST }}>Loading…</div>;
+  if (loading) return <div className="p-6 opacity-80" style={{ color: CONTRAST }}>{t("common.loading")}</div>;
   if (err) return <div className="p-6" style={{ color: isDarkMode ? "#fecaca" : "#b91c1c" }}>{err}</div>;
   if (!model) return null;
 
@@ -471,18 +477,18 @@ export default function EditEarning() {
     <div className="space-y-6" style={{ color: CONTRAST }}>
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
-        <Title text="Edit earning" />
+        <Title text={t("earnings.editPage.title")} />
         <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => navigate("/Earnings")}>Back</Button>
-          <Button onClick={saveHeader}>Save</Button>
+          <Button variant="secondary" onClick={() => navigate("/Earnings")}>{t("common.back")}</Button>
+          <Button onClick={saveHeader}>{t("common.save")}</Button>
         </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Total" value={total.toLocaleString(undefined, { style: "currency", currency: CURRENCY })} />
-        <StatCard title="Already received" value={alreadyReceived.toLocaleString(undefined, { style: "currency", currency: CURRENCY })} />
-        <StatCard title="Remaining" value={pending.toLocaleString(undefined, { style: "currency", currency: CURRENCY })} />
+        <StatCard title={t("earnings.editPage.kpiTotal")} value={total.toLocaleString(undefined, { style: "currency", currency: CURRENCY })} />
+        <StatCard title={t("earnings.editPage.kpiAlreadyReceived")} value={alreadyReceived.toLocaleString(undefined, { style: "currency", currency: CURRENCY })} />
+        <StatCard title={t("earnings.editPage.kpiRemaining")} value={pending.toLocaleString(undefined, { style: "currency", currency: CURRENCY })} />
       </div>
 
       {/* Header photo  */}
@@ -492,7 +498,7 @@ export default function EditEarning() {
             type="button"
             className="w-28 h-28 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
             onClick={() => earningPreview && setLightboxUrl(earningPreview)}
-            title={earningPreview ? "Click to enlarge" : ""}
+            title={earningPreview ? t("earnings.editPage.clickToEnlarge") : ""}
             style={{
               color: CONTRAST,
               background: "transparent",
@@ -500,15 +506,15 @@ export default function EditEarning() {
             }}
           >
             {earningPreview ? (
-              <img src={earningPreview} alt="Earning photo" className="w-full h-full object-cover" />
+              <img src={earningPreview} alt={t("earnings.editPage.earningPhotoAlt")} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-xs opacity-70 px-2 text-center">No photo</span>
+              <span className="text-xs opacity-70 px-2 text-center">{t("earnings.editPage.noPhoto")}</span>
             )}
           </button>
 
           <div className="flex-1">
             <div className="flex items-center justify-between">
-              <label className="block mb-1 text-sm font-medium" style={{ color: CONTRAST }}>Earning photo (optional)</label>
+              <label className="block mb-1 text-sm font-medium" style={{ color: CONTRAST }}>{t("earnings.editPage.earningPhotoOptional")}</label>
               <span
                 className="ml-2 text-[11px] px-2 py-0.5 rounded"
                 style={{
@@ -516,7 +522,7 @@ export default function EditEarning() {
                   color: earningPreview ? (isDarkMode ? "#86efac" : "#15803d") : (isDarkMode ? "#fecdd3" : "#be123c"),
                 }}
               >
-                {earningPreview ? "Has photo" : "No photo"}
+                {earningPreview ? t("earnings.editPage.hasPhoto") : t("earnings.editPage.noPhoto")}
               </span>
             </div>
 
@@ -526,17 +532,17 @@ export default function EditEarning() {
               accept="image/*"
               onChange={(e) => onSelectEarningFile(e.target.files?.[0] || null)}
             />
-            <p className="text-xs opacity-80 mt-1">This is stored on the earning (not on instances).</p>
+            <p className="text-xs opacity-80 mt-1">{t("earnings.editPage.photoHintEarning")}</p>
 
             <div className="mt-2 flex flex-wrap gap-2">
               <Button onClick={uploadEarningImage} disabled={!earningFile || earningUploading}>
-                {earningUploading ? "Uploading…" : "Upload"}
+                {earningUploading ? t("earnings.editPage.uploading") : t("common.upload")}
               </Button>
               <Button variant="secondary" onClick={clearEarningPhotoSelection} disabled={!earningFile}>
-                Clear selection
+                {t("common.clearSelection")}
               </Button>
               <Button variant="secondary" onClick={removeEarningPhoto} disabled={earningUploading || !earningPreview}>
-                Remove current
+                {t("common.removeCurrent")}
               </Button>
             </div>
           </div>
@@ -555,12 +561,12 @@ export default function EditEarning() {
               style={{ opacity: 0.75, borderBottom: `1px solid ${CONTRAST}` }}
             >
               <tr>
-                <th className="py-2 px-4">Date</th>
-                <th className="py-2 px-4">Amount</th>
-                <th className="py-2 px-4">Paid</th>
-                <th className="py-2 px-4">Status</th>
-                <th className="py-2 px-4">Photo</th>
-                <th className="py-2 px-4">Actions</th>
+                <th className="py-2 px-4">{t("earnings.editPage.thDate")}</th>
+                <th className="py-2 px-4">{t("earnings.editPage.thAmount")}</th>
+                <th className="py-2 px-4">{t("earnings.editPage.thPaid")}</th>
+                <th className="py-2 px-4">{t("earnings.editPage.thStatus")}</th>
+                <th className="py-2 px-4">{t("earnings.editPage.thPhoto")}</th>
+                <th className="py-2 px-4">{t("common.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -578,7 +584,7 @@ export default function EditEarning() {
                     style={{ borderTop: `1px solid ${ROWSEP}`, borderBottom: isLast ? `1px solid ${CONTRAST}` : undefined }}
                   >
                     <td className="py-2 px-4">
-                      {inst?.ExpectedDate ? new Date(inst.ExpectedDate).toLocaleDateString() : "-"}
+                      {inst?.ExpectedDate ? new Date(inst.ExpectedDate).toLocaleDateString() : "—"}
                     </td>
                     <td className="py-2 px-4">
                       {value.toLocaleString(undefined, { style: "currency", currency: CURRENCY })}
@@ -594,7 +600,7 @@ export default function EditEarning() {
                           color: isPaid ? (isDarkMode ? "#86efac" : "#15803d") : (isDarkMode ? "#fecdd3" : "#be123c"),
                         }}
                       >
-                        {isPaid ? "Paid" : "Not paid"}
+                        {isPaid ? t("earnings.editPage.paid") : t("earnings.editPage.notPaid")}
                       </span>
                     </td>
                     <td className="py-2 px-4">
@@ -605,19 +611,19 @@ export default function EditEarning() {
                           color: hasPhoto ? (isDarkMode ? "#86efac" : "#15803d") : (isDarkMode ? "#fecdd3" : "#be123c"),
                         }}
                       >
-                        {hasPhoto ? "Has photo" : "No photo"}
+                        {hasPhoto ? t("earnings.editPage.hasPhoto") : t("earnings.editPage.noPhoto")}
                       </span>
                       {hasPhoto && photoUrl && (
                         <div className="mt-1">
                           <Button variant="secondary" onClick={() => setLightboxUrl(photoUrl)} className="!w-auto px-3 !h-8 text-xs">
-                            View
+                            {t("common.view")}
                           </Button>
                         </div>
                       )}
                     </td>
                     <td className="py-2 px-4">
                       <Button variant="secondary" onClick={() => openInstModal(inst.Id)}>
-                        Edit
+                        {t("common.edit")}
                       </Button>
                     </td>
                   </tr>
@@ -627,7 +633,7 @@ export default function EditEarning() {
               {!instancesOrdered.length && (
                 <tr>
                   <td className="py-6 px-4 opacity-60" colSpan={6} style={{ borderBottom: `1px solid ${CONTRAST}` }}>
-                    No instances.
+                    {t("earnings.editPage.noInstances")}
                   </td>
                 </tr>
               )}
@@ -639,7 +645,7 @@ export default function EditEarning() {
       {/* Lightbox */}
       {lightboxUrl && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center" onClick={() => setLightboxUrl(null)}>
-          <img src={lightboxUrl} alt="Preview" className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
+          <img src={lightboxUrl} alt={t("earnings.editPage.previewAlt")} className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
 

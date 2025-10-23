@@ -185,7 +185,6 @@ export default function ListGroups() {
           {
             key: "scope",
             type: "select",
-            label: t?.("groups.label") || t?.("common.groups") || "Groups",
             options: scopeOptions,
           },
         ]}

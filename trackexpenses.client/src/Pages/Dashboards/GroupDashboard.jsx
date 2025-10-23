@@ -260,7 +260,7 @@ export default function GroupDashboard() {
         }}
       >
         <div className="mb-3 font-medium flex items-center gap-2">
-          <span>{t("dashboard.charts.evolution")}</span>
+          <span>{t("charts.evolution")}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
         </div>
         <EvolutionChart
@@ -284,7 +284,7 @@ export default function GroupDashboard() {
         }}
       >
         <div className="mb-3 font-medium flex items-center gap-2">
-          <span>{t("dashboard.charts.categories")}</span>
+          <span>{t("charts.categories")}</span>
           {softUpdating && <span className="text-xs opacity-60">· updating…</span>}
         </div>
         <CategoriesPies
@@ -292,8 +292,8 @@ export default function GroupDashboard() {
           expenseData={catsExpense}
           currency={currency}
           titles={{
-            income: t("dashboard.charts.income"),
-            expense: t("dashboard.charts.expenses"),
+            income: t("charts.income"),
+            expense: t("charts.expenses"),
           }}
           themeColors={{
             bg,

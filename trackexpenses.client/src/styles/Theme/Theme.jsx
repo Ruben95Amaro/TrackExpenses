@@ -63,12 +63,11 @@ const lightTheme = {
       },
     },
 
-    // PREMIUM (LIGHT): azul mais suave + gold mais escuro
 premium: {
-  gold: "#7A5F00",   // dourado mais fechado (tom ouro antigo)
-  text: "#7A5F00",   // igual p/ coerência
-  bg: "#A0BDE8",     // azul mais escuro, menos saturado
-  border: "#5C4500", // dá um contorno leve e elegante
+  gold: "#7A5F00",  
+  text: "#7A5F00",  
+  bg: "#A0BDE8",    
+  border: "#5C4500", 
 },
 
   },
@@ -135,12 +134,11 @@ const darkTheme = {
       },
     },
 
-    // PREMIUM (DARK): gold com fundo azul (mantido)
     premium: {
-      gold: "#FFD700",    // retrocompat
+      gold: "#FFD700",    
       text: "#FFD700",
-      bg: "#1E3A8A",      // azul profundo por baixo do badge
-      border: "#60A5FA",  // contorno azul clarinho
+      bg: "#1E3A8A",      
+      border: "#60A5FA",  
     },
   },
 };

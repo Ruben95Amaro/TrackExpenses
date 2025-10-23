@@ -215,7 +215,7 @@ export default function Dashboard() {
             color: FG,
           }}
         >
-          <div className="mb-3 font-medium">{t("dashboard.charts.evolution")}</div>
+          <div className="mb-3 font-medium">{t("charts.evolution")}</div>
           <EvolutionChart
             data={series}
             currency={currency}
@@ -238,14 +238,14 @@ export default function Dashboard() {
             color: FG,
           }}
         >
-          <div className="mb-3 font-medium">{t("dashboard.charts.categories")}</div>
+          <div className="mb-3 font-medium">{t("charts.categories")}</div>
           <CategoriesPies
             incomeData={catsIncome}
             expenseData={catsExpense}
             currency={currency}
             titles={{
-              income: t("dashboard.charts.income"),
-              expense: t("dashboard.charts.expenses"),
+              income: t("charts.income"),
+              expense: t("charts.expenses"),
             }}
             themeColors={{ bg, border: FG, text: FG }}
           />
