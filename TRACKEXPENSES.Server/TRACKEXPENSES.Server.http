@@ -1,6 +1,0 @@
-@TRACKEXPENSES.Server_HostAddress = http://localhost:5285
-
-GET {{TRACKEXPENSES.Server_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
