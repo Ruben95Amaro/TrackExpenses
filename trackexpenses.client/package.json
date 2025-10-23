@@ -15,7 +15,7 @@
     "@react-oauth/google": "^0.12.2",
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
-    "axios": "^0.24.0",
+    "axios": "^1.12.2",
     "bootstrap": "^5.3.3",
     "chart.js": "^4.4.9",
     "cors": "^2.8.5",
