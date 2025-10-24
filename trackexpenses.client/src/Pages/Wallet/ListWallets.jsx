@@ -56,7 +56,9 @@ export default function ListWallets() {
   const fetchWallets = async () => {
     try {
       setLoading(true);
+      console.log('AAAAAAAAAAAAAAAAAAAAAAAA');
       const res = await apiCall.get("/wallets?includeArchived=true");
+      console.log('res', res);
       const data = res?.data ?? res;
       const list = Array.isArray(data) ? data : data?.$values ?? [];
       setWallets(list);
