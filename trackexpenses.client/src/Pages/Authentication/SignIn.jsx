@@ -9,7 +9,7 @@ import Card from "../../components/UI/Card";
 import Input from "../../components/Form/Input";
 import Button from "../../components/Buttons/Button";
 
-import { pageConfigurations, getPasswordValidation } from "../../utilis/Configurations/SigninConfiguration";
+import { pageConfigurations, getPasswordValidation } from "../../utils/configurations"
 
 export default function SignIn() {
   const { theme } = useTheme();

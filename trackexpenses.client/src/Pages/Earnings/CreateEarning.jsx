@@ -8,7 +8,7 @@ import Select from "../../components/Form/Select";
 import Button from "../../components/Buttons/Button";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import { useTheme } from "../../styles/Theme/Theme";
 
 const EP_CREATE     = "Earnings/CreateEarningsWithImage";

@@ -11,7 +11,7 @@ import { useTheme } from "../../styles/Theme/Theme";
 import useLogout from "../../services/Authentication/Logout";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 
 export default function SideBar({
   items = [],

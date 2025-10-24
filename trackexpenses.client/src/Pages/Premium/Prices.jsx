@@ -4,7 +4,7 @@ import Title from "../../components/Titles/TitlePage";
 import Card from "../../components/UI/Card";
 import Button from "../../components/Buttons/Button";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import AuthContext from "../../services/Authentication/AuthContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 

@@ -5,7 +5,7 @@ import Card from "../../components/UI/Card";
 import Input from "../../components/Form/Input";
 import Button from "../../components/Buttons/Button";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 import { Save } from "lucide-react";

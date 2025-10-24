@@ -1,7 +1,7 @@
 import React, { useEffect, useContext, useState, useMemo } from "react";
 import { Routes, Route } from "react-router-dom";
 import { useTheme } from "./styles/Theme/Theme";
-import { useLanguage } from "./utilis/Translate/LanguageContext";
+import { useLanguage } from "./utils/Translate/LanguageContext";
 import AuthContext from "./services/Authentication/AuthContext";
 import apiCall from "./services/ApiCallGeneric/apiCall";
 

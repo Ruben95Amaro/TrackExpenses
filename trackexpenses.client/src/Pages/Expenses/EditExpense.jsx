@@ -10,7 +10,7 @@ import Input from "../../components/Form/Input";
 import TextArea from "../../components/Form/TextArea";
 import StatCard from "../../components/UI/StatCard";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 
 /* API */
 import apiCall from "../../services/ApiCallGeneric/apiCall";

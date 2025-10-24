@@ -4,7 +4,7 @@ import Title from "../../components/Titles/TitlePage";
 import Card from "../../components/UI/Card";
 import Button from "../../components/Buttons/Button";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 
 const unwrap = (v) => (Array.isArray(v) ? v : v?.$values ?? (v ?? []));
 const ok2xx = (r) => r && r.status >= 200 && r.status < 300;

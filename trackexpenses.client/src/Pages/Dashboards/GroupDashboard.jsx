@@ -7,7 +7,7 @@ import StatusStackedBar from "../../components/Charts/StatusStackedBar";
 import DashboardFilterBar from "../../components/Filters/DashboardFilterBar";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import AuthContext from "../../services/Authentication/AuthContext";
 
 /* === helpers === */

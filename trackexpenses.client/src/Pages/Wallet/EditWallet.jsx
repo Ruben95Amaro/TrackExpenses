@@ -5,7 +5,7 @@ import TitlePage from "../../components/Titles/TitlePage"
 import Card from "../../components/UI/Card";
 import Input from "../../components/Form/Input";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 
 

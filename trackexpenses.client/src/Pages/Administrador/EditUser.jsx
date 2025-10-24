@@ -16,7 +16,7 @@ import {
   RotateCcw,
   Camera,
 } from "lucide-react";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import AuthContext from "../../services/Authentication/AuthContext";
 import Button from "../../components/Buttons/Button";
 
@@ -432,7 +432,7 @@ function EditUserProfile() {
                     setUser((prev) => (prev ? { ...prev, profileImage: "" } : prev));
                     setFormData((prev) => ({ ...prev, profileImage: "" }));
                   }}
-                  className="absolute -top-2 -right-2 !p-1 !w-7 !h-7 grid place-items-center rounded-full"
+                  className="absolute -top-2 -right-2 p-1! w-7! h-7! grid place-items-center rounded-full"
                   title={t("common.remove_photo")}
                   aria-label={t("common.remove_photo")}
                 >

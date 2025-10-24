@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Menu as MenuIcon, Wallet, LogIn, UserPlus } from "lucide-react";
 import { useTheme } from "../../styles/Theme/Theme";
 import AuthContext from "../../services/Authentication/AuthContext";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 
 export default function TopBar({ title = "TRACKEXPENSES", menuItems = [] }) {

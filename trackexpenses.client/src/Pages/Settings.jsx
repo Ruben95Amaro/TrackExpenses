@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Moon, Sun, Globe, Wallet } from "lucide-react";
 import { useTheme } from "../styles/Theme/Theme";
-import { useLanguage } from "../utilis/Translate/LanguageContext";
+import { useLanguage } from "../utils/Translate/LanguageContext";
 
 function Settings() {
   const { theme, isDarkMode, toggleTheme } = useTheme();

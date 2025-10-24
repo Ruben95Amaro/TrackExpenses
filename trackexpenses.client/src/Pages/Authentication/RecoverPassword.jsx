@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Lock, ArrowRight, ArrowLeft, CheckCircle } from "lucide-react";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 
 function RecoverPassword() {

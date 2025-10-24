@@ -2,11 +2,11 @@ import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Title from "../../components/Titles/TitlePage";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import { useTheme } from "../../styles/Theme/Theme";
 
 import Input from "../../components/Form/Input";
-import { getPasswordValidation } from "../../utilis/Configurations/SigninConfiguration";
+import { getPasswordValidation } from "../../utils/configurations/SignInConfiguration";
 
 function parseToRGB(c) {
   if (!c || typeof c !== "string") return { r: 11, g: 18, b: 32 };

@@ -5,7 +5,7 @@ import Title from "../../components/Titles/TitlePage";
 import StatCard from "../../components/UI/StatCard";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import { useRequireWallet } from "../../services/Authentication/useRequireWallet";
 
 import EvolutionChart from "../../components/Charts/EvolutionChart";

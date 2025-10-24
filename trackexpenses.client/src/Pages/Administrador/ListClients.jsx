@@ -6,7 +6,7 @@ import GenericFilter from "../../components/Tables/GenericFilter";
 import Title from "../../components/Titles/TitlePage";
 
 import apiCall from "../../services/ApiCallGeneric/apiCall";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import AuthContext from "../../services/Authentication/AuthContext";
 import { useTheme } from "../../styles/Theme/Theme";
 import { Plus } from "lucide-react";

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useRequireWallet } from "./useRequireWallet";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 
 export default function WalletGate({
   redirectTo = "/CreateWallet",

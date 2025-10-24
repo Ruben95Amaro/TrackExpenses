@@ -9,7 +9,7 @@ import Button from "../../components/Buttons/Button";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 import QRCodeFromPhoto from "../../components/QR/QRCodeFromPhoto";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import { QrCode, Camera } from "lucide-react";
 import { useTheme } from "../../styles/Theme/Theme";
 

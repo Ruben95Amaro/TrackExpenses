@@ -15,7 +15,7 @@ import {
   EyeOff,
   Camera,
 } from "lucide-react";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import AuthContext from "../../services/Authentication/AuthContext";
 import Button from "../../components/Buttons/Button";
 

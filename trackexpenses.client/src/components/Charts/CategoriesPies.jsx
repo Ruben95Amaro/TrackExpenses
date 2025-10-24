@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 
 const A = (x) => (Array.isArray(x) ? x : x?.$values ? x.$values : []);
 const N = (v) => (v == null ? 0 : Number(v));

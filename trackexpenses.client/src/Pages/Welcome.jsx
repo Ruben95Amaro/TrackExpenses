@@ -3,7 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 import { ArrowRight, PieChart, Shield, TrendingUp } from "lucide-react";
 import { useTheme } from "../styles/Theme/Theme";
 import AuthContext from "../services/Authentication/AuthContext";
-import { useLanguage } from "../utilis/Translate/LanguageContext";
+import { useLanguage } from "../utils/Translate/LanguageContext";
 
 function Welcome() {
   const { theme } = useTheme();

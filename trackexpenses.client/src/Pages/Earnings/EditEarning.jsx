@@ -13,7 +13,7 @@ import TextArea from "../../components/Form/TextArea";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 
 /* Endpoints  */
 const EP_GET = (id) => `Earnings/GetById/${id}`;

@@ -7,7 +7,7 @@ import Button from "../../components/Buttons/Button";
 import GenericFilter from "../../components/Tables/GenericFilter";
 import GenericTable from "../../components/Tables/GenericTable";
 import { useTheme } from "../../styles/Theme/Theme";
-import { useLanguage } from "../../utilis/Translate/LanguageContext";
+import { useLanguage } from "../../utils/Translate/LanguageContext";
 import apiCall from "../../services/ApiCallGeneric/apiCall";
 import AuthContext from "../../services/Authentication/AuthContext";
 
