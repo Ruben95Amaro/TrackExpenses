@@ -37,10 +37,10 @@ import ListEarnings from "./Pages/Earnings/ListEarnings";
 import CreateEarning from "./Pages/Earnings/CreateEarning";
 import EditEarning from "./Pages/Earnings/EditEarning";
 import ViewEarning from "./Pages/Earnings/ViewEarning";
-import Login from "./Pages/Autentication/Login";
-import SignIn from "./Pages/Autentication/SignIn";
-import ForgotPassword from "./Pages/Autentication/ForgotPassword";
-import RecoverPassword from "./Pages/Autentication/RecoverPassword";
+import Login from "./Pages/Authentication/Login"
+import SignIn from "./Pages/Authentication/SignIn";
+import ForgotPassword from "./Pages/Authentication/ForgotPassword";
+import RecoverPassword from "./Pages/Authentication/RecoverPassword";
 import SettingsPage from "./Pages/Settings";
 import ProfilePage from "./Pages/User/Profile";
 import PremiumChoicePage from "./Pages/Premium/Prices";
