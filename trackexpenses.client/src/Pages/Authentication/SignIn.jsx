@@ -252,7 +252,7 @@ export default function SignIn() {
                 size="md"
                 variant="primary"
                 fullWidth
-                className="!h-11 !px-6 !rounded-xl leading-none"
+                className="h-11! px-6! rounded-xl! leading-none"
               >
                 Next
               </Button>
@@ -263,7 +263,7 @@ export default function SignIn() {
                   size="md"
                   onClick={() => setStep(1)}
                   fullWidth
-                  className="!h-11 !px-6 !rounded-xl leading-none"
+                  className="h-11! px-6! rounded-xl! leading-none"
                 >
                   Back
                 </Button>
@@ -273,7 +273,7 @@ export default function SignIn() {
                   size="md"
                   disabled={submitting}
                   fullWidth
-                  className="!h-11 !px-6 !rounded-xl leading-none"
+                  className="h-11! px-6! rounded-xl! leading-none"
                   aria-busy={submitting}
                 >
                   {submitting ? "Saving…" : "Create Account!"}

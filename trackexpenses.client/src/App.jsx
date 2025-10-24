@@ -6,7 +6,7 @@ import AuthContext from "./services/Authentication/AuthContext";
 import apiCall from "./services/ApiCallGeneric/apiCall";
 
 import AppShell from "./components/Layouts/AppShell";
-import SessionPopup from "./Pages/Autentication/SessionPopup";
+import SessionPopup from "./Pages/Authentication/SessionPopup";
 
 import RequireAuth from "./services/Authentication/Require";
 import NotRequireAuth from "./services/Authentication/NotRequire";
