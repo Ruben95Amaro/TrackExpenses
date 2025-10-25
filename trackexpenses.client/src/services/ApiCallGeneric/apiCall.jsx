@@ -22,9 +22,11 @@ const apiCall = axios.create({
   headers: { "Content-Type": "application/json" },
   validateStatus: () => true
 });
+console.log("apiCall", apiCall);
 
 apiCall.interceptors.request.use((cfg) => {
   try {
+    console.log('apiCall.interceptors', localStorage);
     const a = JSON.parse(localStorage.getItem("auth") || "{}");
     const t = a?.user?.AccessToken;
     if (t) cfg.headers.Authorization = `Bearer ${t}`;
@@ -88,6 +90,8 @@ export const setAuthHeader = (token) => {
 
 export function syncAuthHeaderFromStorage() {
   try {
+    console.log('syncAuthHeaderFromStorage', localStorage);
+
     const a = JSON.parse(localStorage.getItem("auth") || "{}");
     const t = a?.user?.AccessToken;
     if (t) apiCall.defaults.headers.Authorization = `Bearer ${t}`;
