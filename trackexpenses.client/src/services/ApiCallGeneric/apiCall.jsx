@@ -45,24 +45,37 @@ apiCall.interceptors.request.use((cfg) => {
 
 apiCall.interceptors.response.use(
   (res) => {
-    const fullUrl = res?.config?.baseURL ? new URL(res.config.url || "", res.config.baseURL).toString() : (res?.config?.url || "");
+    const fullUrl = res?.config?.baseURL
+      ? new URL(res.config.url || "", res.config.baseURL).toString()
+      : (res?.config?.url || "");
+
     console.log("⬅️", res.status, fullUrl, res.data);
 
-    // se vier HTML do ngrok, não finjas sucesso
-    const ct = res.headers?.["content-type"] || res.headers?.get?.("content-type");
+    const ct = (res.headers?.["content-type"] || "").toLowerCase();
+    const isNoContent = res.status === 204 || res.data == null || res.data === "";
     const looksHtml = typeof res.data === "string" && /<!DOCTYPE html>|<html/i.test(res.data);
-    if (!ct?.includes?.("application/json") || looksHtml) {
+
+    // 1) 204 / sem body: sucesso
+    if (isNoContent) {
+      return { ok: true, data: null, status: res.status, headers: res.headers, config: res.config };
+    }
+
+    // 2) Splash do ngrok (HTML) -> erro “não JSON”
+    if (looksHtml && !ct.includes("application/json")) {
       return {
         ok: false,
-        error: { status: res.status, message: "Resposta não é JSON (pode ser splash do ngrok)." },
+        error: { status: res.status, message: "Resposta não é JSON (pode ser splash do ngrok).", data: res.data },
         status: res.status,
-        config: res.config,
+        config: res.config
       };
     }
 
-    if (res.status >= 200 && res.status < 300)
+    // 3) 2xx com JSON ou texto válido
+    if (res.status >= 200 && res.status < 300) {
       return { ok: true, data: res.data, status: res.status, headers: res.headers, config: res.config };
+    }
 
+    // 4) Mapa de erros padrão
     let msg = "Pedido inválido.";
     if (res.status === 401) msg = "Sessão expirada ou token ausente.";
     else if (res.status === 403) msg = "Sem permissões.";
@@ -70,13 +83,20 @@ apiCall.interceptors.response.use(
     else if (res.status === 429) msg = "Demasiados pedidos.";
     else if (res.status >= 500) msg = "Erro do servidor.";
 
-    return { ok: false, error: { status: res.status, message: msg, data: res.data }, status: res.status, config: res.config };
+    return {
+      ok: false,
+      error: { status: res.status, message: msg, data: res.data },
+      status: res.status,
+      config: res.config
+    };
   },
-  (error) => Promise.resolve({
-    ok: false,
-    error: { status: null, message: "Falha de rede.", data: null }
-  })
+  (error) =>
+    Promise.resolve({
+      ok: false,
+      error: { status: null, message: "Falha de rede.", data: null }
+    })
 );
+
 
 export const setAuthHeader = (token) => {
   if (token) apiCall.defaults.headers.Authorization = `Bearer ${token}`;
