@@ -29,8 +29,12 @@ apiCall.interceptors.request.use((cfg) => {
     console.log('apiCall.interceptors', localStorage);
     const a = JSON.parse(localStorage.getItem("auth") || "{}");
     const t = a?.user?.AccessToken;
+    console.log('t', t);
+
     if (t) cfg.headers.Authorization = `Bearer ${t}`;
     else delete cfg.headers.Authorization;
+    console.log('cfg.headers.Authorization', cfg.headers.Authorization);
+
   } catch {
     delete cfg.headers.Authorization;
   }
@@ -60,6 +64,7 @@ const normalizeError = (errOrRes, fallbackMsg) => {
 
 apiCall.interceptors.response.use(
   (res) => {
+    console.log('res', res);
     if (res.status >= 200 && res.status < 300) {
       return { ok: true, data: res.data, status: res.status, headers: res.headers, config: res.config };
     }
