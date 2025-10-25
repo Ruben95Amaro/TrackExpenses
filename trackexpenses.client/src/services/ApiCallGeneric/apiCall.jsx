@@ -25,10 +25,10 @@ const apiCall = axios.create({
   timeout: TIMEOUT,
   withCredentials: false, // estamos a usar header, não cookies
   headers: {
-    "Content-Type": "application/json",
-    "Accept": "application/json",
-    "ngrok-skip-browser-warning": "true",
-  },
+  "ngrok-skip-browser-warning": "true",
+  "Content-Type": "application/json",
+  "Accept": "application/json"
+},
   validateStatus: () => true,
 });
 
