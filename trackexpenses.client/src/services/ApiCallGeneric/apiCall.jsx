@@ -1,52 +1,55 @@
+// src/services/apiCall.js
 import axios from "axios";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const TIMEOUT = 25000;
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, ""); // sem "/" no fim
+const TIMEOUT = 25_000;
 const AUTH_KEY = "auth";
 
-/* ================== helpers storage ================== */
+/* ========== helpers auth ========== */
 const readAuth = () => {
   try { return JSON.parse(localStorage.getItem(AUTH_KEY) || "{}"); }
   catch { return {}; }
 };
-const getAccess = () => {
-  try { return readAuth()?.user?.accessToken ?? null; }
+
+const getAccessToken = () => {
+  try { return readAuth()?.user?.accessToken ?? null; } // <-- sempre accessToken (minúsculo)
   catch { return null; }
 };
 
-/* ================== axios ================== */
+/* ========== axios instance ========== */
 const apiCall = axios.create({
   baseURL: BASE_URL,
-  withCredentials: false,
   timeout: TIMEOUT,
+  withCredentials: false, // só mete true se usares cookies
   headers: { "Content-Type": "application/json" },
-  validateStatus: () => true
+  validateStatus: () => true, // tratamos o erro no interceptor
 });
-console.log("apiCall", apiCall);
 
+/* ========== request logging + auth ========== */
 apiCall.interceptors.request.use((cfg) => {
-  try {
-    console.log('apiCall.interceptors', localStorage);
-    const a = JSON.parse(localStorage.getItem("auth") || "{}");
-    const t = a?.user?.AccessToken;
-    console.log('t', t);
+  // compõe o URL final para logging
+  const fullUrl = cfg.baseURL
+    ? new URL(cfg.url || "", cfg.baseURL).toString()
+    : (cfg.url || "");
 
-    if (t) cfg.headers.Authorization = `Bearer ${t}`;
-    else delete cfg.headers.Authorization;
-    console.log('cfg.headers.Authorization', cfg.headers.Authorization);
+  const token = getAccessToken();
+  if (token) cfg.headers.Authorization = `Bearer ${token}`;
+  else delete cfg.headers.Authorization;
 
-  } catch {
-    delete cfg.headers.Authorization;
-  }
+  console.log("➡️",
+    (cfg.method || "GET").toUpperCase(),
+    fullUrl,
+    { headers: cfg.headers }
+  );
+
   return cfg;
 });
 
-
-/* ================== normalização ================== */
+/* ========== normalização de erro ========== */
 const normalizeError = (errOrRes, fallbackMsg) => {
-  const isAxiosErrObj = !!errOrRes?.isAxiosError || !!errOrRes?.response || !!errOrRes?.config;
-  const response = isAxiosErrObj ? errOrRes.response : errOrRes;
-  const config   = isAxiosErrObj ? errOrRes.config   : errOrRes?.config;
+  const isAxios = !!errOrRes?.isAxiosError || !!errOrRes?.response || !!errOrRes?.config;
+  const response = isAxios ? errOrRes.response : errOrRes;
+  const config   = isAxios ? errOrRes.config   : errOrRes?.config;
 
   return {
     status: response?.status ?? null,
@@ -58,16 +61,23 @@ const normalizeError = (errOrRes, fallbackMsg) => {
       (errOrRes?.message?.includes?.("timeout") ? "Pedido expirou." : fallbackMsg),
     data: response?.data ?? null,
     url: config?.url,
-    method: config?.method?.toUpperCase()
+    method: config?.method?.toUpperCase(),
   };
 };
 
+/* ========== response logging + envelope {ok,data|error} ========== */
 apiCall.interceptors.response.use(
   (res) => {
-    console.log('res', res);
+    const fullUrl = res?.config?.baseURL
+      ? new URL(res.config.url || "", res.config.baseURL).toString()
+      : (res?.config?.url || "");
+
+    console.log("⬅️", res.status, fullUrl, res.data);
+
     if (res.status >= 200 && res.status < 300) {
       return { ok: true, data: res.data, status: res.status, headers: res.headers, config: res.config };
     }
+
     let msg = "Pedido inválido.";
     if (res.status === 401) msg = "Sessão expirada. Faz login novamente.";
     else if (res.status === 403) msg = "Sem permissões.";
@@ -79,31 +89,33 @@ apiCall.interceptors.response.use(
       ok: false,
       error: normalizeError({ response: res, config: res.config }, msg),
       status: res.status,
-      config: res.config
+      config: res.config,
     };
   },
-  (error) => Promise.resolve({
-    ok: false,
-    error: normalizeError(error, "Falha de rede. Tenta novamente.")
-  })
+  (error) => {
+    const cfg = error?.config || {};
+    const fullUrl = cfg.baseURL
+      ? new URL(cfg.url || "", cfg.baseURL).toString()
+      : (cfg.url || "");
+    console.log("❌", fullUrl, error);
+
+    return Promise.resolve({
+      ok: false,
+      error: normalizeError(error, "Falha de rede. Tenta novamente."),
+    });
+  }
 );
 
+/* ========== helpers públicos ========== */
 export const setAuthHeader = (token) => {
   if (token) apiCall.defaults.headers.Authorization = `Bearer ${token}`;
   else delete apiCall.defaults.headers.Authorization;
 };
 
-export function syncAuthHeaderFromStorage() {
-  try {
-    console.log('syncAuthHeaderFromStorage', localStorage);
-
-    const a = JSON.parse(localStorage.getItem("auth") || "{}");
-    const t = a?.user?.AccessToken;
-    if (t) apiCall.defaults.headers.Authorization = `Bearer ${t}`;
-    else delete apiCall.defaults.headers.Authorization;
-  } catch {
-    delete apiCall.defaults.headers.Authorization;
-  }
-}
+export const syncAuthHeaderFromStorage = () => {
+  const token = getAccessToken();
+  if (token) apiCall.defaults.headers.Authorization = `Bearer ${token}`;
+  else delete apiCall.defaults.headers.Authorization;
+};
 
 export default apiCall;
